@@ -433,10 +433,16 @@
   // ============================================================
   // FIREBASE CONFIG — cole suas credenciais aqui
   // ============================================================
-  const firebaseConfig = null; // <- troque por { apiKey: "...", authDomain: "...", ... }
+  const firebaseConfig = {
+    apiKey: "AIzaSyAuAC0-JCJzO4BcWcL_uLOfvM0W9ZlFBUM",
+    authDomain: "controle-de-aulas-60b42.firebaseapp.com",
+    projectId: "controle-de-aulas-60b42",
+    storageBucket: "controle-de-aulas-60b42.firebasestorage.app",
+    messagingSenderId: "332361821311",
+    appId: "1:332361821311:web:45f630289a228e1be1234a"
+  };
 
-  // E-mail do personal trainer (VOCÊ) — troque pelo seu e-mail real
-  window.__TRAINER_EMAIL = 'fabio@padoty.com.br'; // <- troque aqui
+  window.__TRAINER_EMAIL = 'padotefabio@gmail.com';
 
   if(firebaseConfig){
     const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
