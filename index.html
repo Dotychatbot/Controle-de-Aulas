@@ -1,0 +1,2604 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PADOTY · Controle de Aulas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #15171a;
+    --bg-elev: #1d2024;
+    --bg-elev-2: #262a2f;
+    --line: #33383e;
+    --text: #f4f5f6;
+    --text-dim: #9aa1a8;
+    --text-faint: #6b7178;
+    --green: #7ed321;
+    --blue: #2a9df4;
+    --gold: #d9b65b;
+    --danger: #e6594f;
+    --warn: #e6b34f;
+    --ok: #5fd97a;
+    --radius: 14px;
+    --radius-sm: 8px;
+    font-size: 16px;
+  }
+
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family: 'Archivo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- Background texture (carbon weave, subtle) ---------- */
+  body::before{
+    content:"";
+    position: fixed; inset:0;
+    background:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 2px, transparent 2px, transparent 6px);
+    pointer-events:none;
+    z-index:0;
+  }
+
+  #app{ position:relative; z-index:1; max-width: 480px; margin: 0 auto; min-height:100vh; display:flex; flex-direction:column; transition: opacity .2s ease; }
+
+  /* ---------- Header ---------- */
+  header.topbar{
+    padding: 18px 20px 14px;
+    display:flex; align-items:center; justify-content:space-between;
+    border-bottom: 1px solid var(--line);
+    position: sticky; top:0; background: rgba(21,23,26,0.92); backdrop-filter: blur(6px); z-index:20;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand-mark{
+    width:34px; height:34px; border-radius:9px;
+    background: linear-gradient(135deg, var(--green) 0%, var(--blue) 100%);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Archivo Black', sans-serif; font-size:16px; color:#0d0f11; flex-shrink:0;
+  }
+  .brand-text{ line-height:1.1; }
+  .brand-text .name{ font-family:'Archivo Black', sans-serif; font-size:15px; letter-spacing:0.04em; }
+  .brand-text .tag{ font-size:10px; color:var(--text-faint); letter-spacing:0.12em; text-transform:uppercase; margin-top:2px; }
+  .top-date{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--text-dim); text-align:right; }
+  .top-date .day{ color: var(--text); font-weight:700; font-size:14px; }
+
+  /* ---------- Main scroll area ---------- */
+  main{ flex:1; padding: 16px 16px 100px; }
+  .screen{ display:none; }
+  .screen.active{ display:block; animation: fadeIn .25s ease; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  /* ---------- Section headings ---------- */
+  .section-title{
+    font-family:'Archivo Black', sans-serif;
+    font-size: 13px; letter-spacing:0.12em; text-transform:uppercase;
+    color: var(--text-dim); margin: 22px 0 10px; display:flex; align-items:center; gap:8px;
+  }
+  .section-title:first-child{ margin-top:4px; }
+  .section-title .accent{ width:4px; height:14px; border-radius:2px; background: linear-gradient(180deg, var(--green), var(--blue)); display:inline-block; }
+
+  /* ---------- Cards ---------- */
+  .card{
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .card-flat{
+    background: var(--bg-elev);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+
+  /* ---------- Student row card ---------- */
+  .student-card{
+    background: var(--bg-elev);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 10px;
+    display:flex; align-items:center; gap:12px;
+    cursor:pointer;
+    transition: border-color .15s ease, transform .1s ease;
+  }
+  .student-card:active{ transform: scale(0.98); }
+  .student-card:hover{ border-color: var(--text-faint); }
+  .student-avatar{
+    width:46px; height:46px; border-radius:50%;
+    background: var(--bg-elev-2);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Archivo Black', sans-serif; font-size:15px; color: var(--text-dim);
+    flex-shrink:0; border:1px solid var(--line);
+  }
+  .student-info{ flex:1; min-width:0; }
+  .student-info .name{ font-weight:700; font-size:15px; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .student-info .plan{ font-size:12px; color: var(--text-dim); }
+  .student-meta{ text-align:right; flex-shrink:0; }
+  .progress-pill{
+    font-family:'JetBrains Mono', monospace; font-weight:700; font-size:13px;
+    padding: 4px 9px; border-radius:20px; display:inline-block;
+    background: var(--bg-elev-2); border:1px solid var(--line); color: var(--text);
+  }
+  .progress-pill.low{ color: var(--warn); border-color: rgba(230,179,79,0.4); }
+  .progress-pill.zero{ color: var(--danger); border-color: rgba(230,89,79,0.4); }
+  .student-meta .sub{ font-size:11px; color: var(--text-faint); margin-top:4px; }
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    font-family:'Archivo', sans-serif; font-weight:700; font-size:14px;
+    border:none; border-radius: var(--radius-sm);
+    padding: 13px 16px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    transition: transform .1s ease, opacity .15s ease;
+    width:100%;
+  }
+  .btn:active{ transform: scale(0.97); }
+  .btn-primary{ background: linear-gradient(135deg, var(--green), var(--blue)); color:#0d0f11; }
+  .btn-secondary{ background: var(--bg-elev-2); color: var(--text); border:1px solid var(--line); }
+  .btn-ghost{ background: transparent; color: var(--text-dim); border:1px solid var(--line); }
+  .btn-danger{ background: rgba(230,89,79,0.12); color: var(--danger); border:1px solid rgba(230,89,79,0.35); }
+  .btn-whatsapp{ background:#25D366; color:#08210f; }
+  .btn-sm{ padding:9px 12px; font-size:12px; width:auto; }
+  .btn-row{ display:flex; gap:8px; }
+  .btn-row .btn{ flex:1; }
+  .btn:disabled{ opacity:0.4; cursor:not-allowed; }
+
+  /* ---------- Inputs ---------- */
+  label{ display:block; font-size:12px; color: var(--text-dim); margin-bottom:6px; font-weight:600; letter-spacing:0.02em; }
+  input, select, textarea{
+    width:100%; background: var(--bg-elev-2); border:1px solid var(--line);
+    border-radius: var(--radius-sm); color: var(--text); padding: 12px 13px;
+    font-family:'Archivo', sans-serif; font-size:14px; margin-bottom:14px;
+  }
+  input:focus, select:focus, textarea:focus{ outline: 2px solid var(--blue); outline-offset:1px; border-color: transparent; }
+  select{ -webkit-appearance:none; appearance:none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239aa1a8' d='M1 1l5 5 5-5'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position: right 14px center; padding-right:32px; }
+  .field-row{ display:flex; gap:10px; }
+  .field-row > div{ flex:1; }
+  .hint{ font-size:11px; color: var(--text-faint); margin-top:-10px; margin-bottom:14px; }
+
+  /* ---------- Stat blocks ---------- */
+  .stat-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+  .stat-grid.cols-3{ grid-template-columns: 1fr 1fr 1fr; }
+  .stat-box{
+    background: var(--bg-elev); border:1px solid var(--line); border-radius: var(--radius);
+    padding: 14px; text-align:center;
+  }
+  .stat-box .value{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:22px; }
+  .stat-box .value.green{ color: var(--green); }
+  .stat-box .value.gold{ color: var(--gold); }
+  .stat-box .label{ font-size:11px; color: var(--text-dim); margin-top:4px; text-transform:uppercase; letter-spacing:0.08em; }
+
+  /* ---------- Empty state ---------- */
+  .empty{
+    text-align:center; padding: 40px 20px; color: var(--text-faint);
+  }
+  .empty .icon{ font-size:32px; margin-bottom:10px; opacity:0.5; }
+  .empty .msg{ font-size:14px; color: var(--text-dim); margin-bottom: 4px; }
+  .empty .sub{ font-size:12px; }
+
+  /* ---------- Bottom nav ---------- */
+  nav.bottomnav{
+    position: fixed; bottom:0; left:0; right:0;
+    max-width:480px; margin:0 auto;
+    background: rgba(29,32,36,0.96); backdrop-filter: blur(8px);
+    border-top: 1px solid var(--line);
+    display:flex; padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+    z-index:30;
+  }
+  nav.bottomnav button{
+    flex:1; background:none; border:none; color: var(--text-faint);
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    font-family:'Archivo', sans-serif; font-size:9px; font-weight:600; letter-spacing:0.02em;
+    padding: 6px 1px; border-radius:10px; cursor:pointer; text-transform:uppercase;
+    transition: color .15s ease;
+  }
+  nav.bottomnav button svg{ width:19px; height:19px; stroke: currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  nav.bottomnav button.active{ color: var(--text); }
+  nav.bottomnav button.active svg{ stroke: var(--green); }
+
+  /* ---------- Modal / sheet ---------- */
+  .sheet-overlay{
+    position: fixed; inset:0; background: rgba(0,0,0,0.6);
+    display:none; align-items:flex-end; justify-content:center; z-index:50;
+  }
+  .sheet-overlay.active{ display:flex; animation: fadeIn .2s ease; }
+  .sheet{
+    background: var(--bg-elev); border-radius: 18px 18px 0 0;
+    width:100%; max-width:480px; max-height:88vh; overflow-y:auto;
+    padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+    animation: slideUp .25s ease;
+    border-top:1px solid var(--line);
+  }
+  @keyframes slideUp{ from{ transform: translateY(100%); } to{ transform: translateY(0); } }
+  .sheet-handle{ width:36px; height:4px; background: var(--line); border-radius:2px; margin: 0 auto 14px; }
+  .sheet-title{ font-family:'Archivo Black', sans-serif; font-size:16px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; }
+  .sheet-close{ background:none; border:none; color: var(--text-faint); font-size:22px; cursor:pointer; line-height:1; padding:4px; }
+
+  /* ---------- Badges ---------- */
+  .badge{
+    display:inline-flex; align-items:center; gap:5px;
+    font-size:11px; font-weight:700; padding: 3px 9px; border-radius:20px;
+    text-transform:uppercase; letter-spacing:0.06em;
+  }
+  .badge-ok{ background: rgba(95,217,122,0.12); color: var(--ok); }
+  .badge-warn{ background: rgba(230,179,79,0.12); color: var(--warn); }
+  .badge-danger{ background: rgba(230,89,79,0.12); color: var(--danger); }
+  .badge-info{ background: rgba(42,157,244,0.12); color: var(--blue); }
+  .badge-muted{ background: var(--bg-elev-2); color: var(--text-faint); }
+
+  /* ---------- Misc ---------- */
+  .divider{ height:1px; background: var(--line); margin: 14px 0; }
+  .row-between{ display:flex; align-items:center; justify-content:space-between; }
+  .text-dim{ color: var(--text-dim); }
+  .text-faint{ color: var(--text-faint); }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+  a.link-style{ color: var(--blue); text-decoration:none; font-weight:600; }
+
+  /* History list */
+  .history-item{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 10px 0; border-bottom: 1px solid var(--line);
+    font-size:13px;
+  }
+  .history-item:last-child{ border-bottom:none; }
+  .history-item .date{ font-family:'JetBrains Mono', monospace; color: var(--text-dim); }
+
+  /* toast */
+  .toast{
+    position: fixed; bottom: 90px; left:50%; transform: translateX(-50%) translateY(20px);
+    background: var(--bg-elev-2); border:1px solid var(--line); color: var(--text);
+    padding: 11px 18px; border-radius: 30px; font-size:13px; font-weight:600;
+    opacity:0; transition: all .25s ease; z-index:60; pointer-events:none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    white-space:nowrap; max-width:90%; overflow:hidden; text-overflow:ellipsis;
+  }
+  .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<!-- ===================== LOGIN SCREEN ===================== -->
+<div id="login-screen" style="display:block; position:fixed; inset:0; background:var(--bg); z-index:100; overflow-y:auto;">
+  <div style="max-width:380px; margin:0 auto; padding:40px 24px 60px;">
+    <div style="text-align:center; margin-bottom:36px;">
+      <div style="width:56px; height:56px; border-radius:14px; background:linear-gradient(135deg,var(--green),var(--blue)); display:flex; align-items:center; justify-content:center; font-family:'Archivo Black',sans-serif; font-size:24px; color:#0d0f11; margin:0 auto 12px;">P</div>
+      <div style="font-family:'Archivo Black',sans-serif; font-size:20px; margin-bottom:4px;">PADOTY</div>
+      <div style="font-size:12px; color:var(--text-faint); letter-spacing:0.1em; text-transform:uppercase;">Saúde e Movimento</div>
+    </div>
+
+    <div id="login-error" style="display:none; background:rgba(230,89,79,0.1); border:1px solid rgba(230,89,79,0.3); border-radius:8px; padding:10px 12px; font-size:13px; color:var(--danger); margin-bottom:14px;"></div>
+
+    <label>E-mail</label>
+    <input type="email" id="login-email" placeholder="seu@email.com" autocomplete="username">
+
+    <label>Senha</label>
+    <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter') doLogin()">
+
+    <button class="btn btn-primary" id="login-btn" onclick="doLogin()" style="margin-top:4px;">Entrar</button>
+
+    <div style="text-align:center; margin-top:20px;">
+      <span class="text-faint" style="font-size:12px;">Esqueceu a senha? </span>
+      <a class="link-style" style="font-size:12px; cursor:pointer;" onclick="doResetPassword()">Redefinir por e-mail</a>
+    </div>
+
+    <div style="text-align:center; margin-top:32px;">
+      <div class="text-faint" style="font-size:11px;">PADOTY Saúde e Movimento · CREF 142588-G/SP</div>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">P</div>
+      <div class="brand-text">
+        <div class="name">PADOTY</div>
+        <div class="tag">Controle de Aulas</div>
+      </div>
+    </div>
+    <div class="top-date">
+      <div class="day" id="header-day">--</div>
+      <div id="header-date">--</div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ===================== HOME ===================== -->
+    <section class="screen active" id="screen-home">
+      <div id="tomorrow-confirm-section"></div>
+
+      <div class="section-title"><span class="accent"></span>Hoje</div>
+      <div id="today-list"></div>
+
+      <div class="section-title"><span class="accent"></span>Resumo do mês</div>
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="value green" id="stat-aulas-mes">0</div>
+          <div class="label">Aulas dadas</div>
+        </div>
+        <div class="stat-box">
+          <div class="value gold" id="stat-receita-mes">R$ 0</div>
+          <div class="label">Recebido</div>
+        </div>
+      </div>
+
+      <div class="section-title"><span class="accent"></span>Atenção</div>
+      <div id="alerts-list"></div>
+    </section>
+
+    <!-- ===================== ALUNOS ===================== -->
+    <section class="screen" id="screen-students">
+      <div class="row-between" style="margin-bottom:14px;">
+        <div class="section-title" style="margin:0;"><span class="accent"></span>Alunos</div>
+        <div class="btn-row" style="width:auto; gap:8px;">
+          <button class="btn btn-secondary btn-sm" onclick="copySelfRegisterLink()">🔗 Autocadastro</button>
+          <button class="btn btn-primary btn-sm" onclick="openStudentForm()">+ Novo aluno</button>
+        </div>
+      </div>
+      <div id="pending-registrations"></div>
+      <div id="students-list"></div>
+    </section>
+
+    <!-- ===================== ALUNO DETALHE ===================== -->
+    <section class="screen" id="screen-student-detail">
+      <button class="btn btn-ghost btn-sm" style="width:auto; margin-bottom:14px;" onclick="showScreen('students')">← Voltar</button>
+      <div id="student-detail-content"></div>
+    </section>
+
+    <!-- ===================== PLANOS ===================== -->
+    <section class="screen" id="screen-plans">
+      <div class="row-between" style="margin-bottom:14px;">
+        <div class="section-title" style="margin:0;"><span class="accent"></span>Planos</div>
+        <button class="btn btn-primary btn-sm" onclick="openPlanForm()">+ Novo plano</button>
+      </div>
+      <div id="plans-list"></div>
+    </section>
+
+    <!-- ===================== AGENDA ===================== -->
+    <section class="screen" id="screen-agenda">
+      <div class="row-between" style="margin-bottom:10px;">
+        <button class="btn btn-ghost btn-sm" style="width:auto;" onclick="shiftAgendaWeek(-1)">←</button>
+        <div class="section-title" style="margin:0;" id="agenda-week-label">Esta semana</div>
+        <button class="btn btn-ghost btn-sm" style="width:auto;" onclick="shiftAgendaWeek(1)">→</button>
+      </div>
+      <div id="agenda-week"></div>
+    </section>
+
+    <!-- ===================== CAIXA ===================== -->
+    <section class="screen" id="screen-cash">
+      <div class="section-title"><span class="accent"></span>Visão geral</div>
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="value gold" id="cash-mes">R$ 0</div>
+          <div class="label">Este mês</div>
+        </div>
+        <div class="stat-box">
+          <div class="value" id="cash-total">R$ 0</div>
+          <div class="label">Total geral</div>
+        </div>
+      </div>
+
+      <div class="section-title"><span class="accent"></span>Por aluno (este mês)</div>
+      <div id="cash-by-student"></div>
+
+      <div class="section-title"><span class="accent"></span>Histórico de pagamentos</div>
+      <div id="cash-history"></div>
+    </section>
+  </main>
+
+  <nav class="bottomnav">
+    <button class="nav-btn active" data-screen="home" onclick="showScreen('home')">
+      <svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+      Hoje
+    </button>
+    <button class="nav-btn" data-screen="students" onclick="showScreen('students')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"/></svg>
+      Alunos
+    </button>
+    <button class="nav-btn" data-screen="agenda" onclick="showScreen('agenda')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v3M16 3v3"/></svg>
+      Agenda
+    </button>
+    <button class="nav-btn" data-screen="plans" onclick="showScreen('plans')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M8 14h2M8 17h5"/></svg>
+      Planos
+    </button>
+    <button class="nav-btn" data-screen="cash" onclick="showScreen('cash')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 9.5h4a1.5 1.5 0 010 3h-3a1.5 1.5 0 000 3h4"/></svg>
+      Caixa
+    </button>
+  </nav>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<!-- ===================== SHEETS (modals) inserted by JS ===================== -->
+<div id="sheet-container"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- ============================================================
+     FIREBASE — cole aqui o seu firebaseConfig quando tiver
+     ============================================================ -->
+<script type="module">
+  // ============================================================
+  // FIREBASE CONFIG — cole suas credenciais aqui
+  // ============================================================
+  const firebaseConfig = null; // <- troque por { apiKey: "...", authDomain: "...", ... }
+
+  // E-mail do personal trainer (VOCÊ) — troque pelo seu e-mail real
+  window.__TRAINER_EMAIL = 'fabio@padoty.com.br'; // <- troque aqui
+
+  if(firebaseConfig){
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+    const { getFirestore, doc, getDoc, setDoc, onSnapshot } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    const { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+
+    const app = initializeApp(firebaseConfig);
+    const fsDb = getFirestore(app);
+    const auth = getAuth(app);
+
+    window.__firebase = { fsDb, doc, getDoc, setDoc, onSnapshot, auth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword };
+    window.__firebaseReady = true;
+  } else {
+    window.__firebaseReady = false;
+  }
+  window.dispatchEvent(new Event('firebase-checked'));
+</script>
+
+<script>
+/* ============================================================
+   DADOS / STORAGE
+   ============================================================ */
+const STORAGE_KEY = 'padoty_aulas_v1';
+// Caminho do documento no Firestore (um único documento para o personal; pronto para multi-usuário no futuro)
+const FIRESTORE_DOC_PATH = { collection: 'padoty', doc: 'aulas_v1' };
+
+let DB = {
+  plans: [],
+  students: [],
+  // sessions: { id, studentId, date (YYYY-MM-DD), status: 'realizada'|'cancelada_24h'|'cancelada_menos24h'|'falta', note }
+  sessions: [],
+  // payments: { id, studentId, planId, amount, date, note }
+  payments: [],
+  // pendingRegistrations: cadastros enviados pelo aluno via link público, aguardando aprovação
+  pendingRegistrations: [],
+  // confirmations: marca quando uma confirmação de aula foi enviada (key: studentId+date)
+  confirmations: []
+};
+
+let _saveTimer = null;
+let _suppressNextSnapshot = false; // evita loop ao salvar e receber o próprio snapshot de volta
+
+function loadDB(){
+  return new Promise((resolve)=>{
+    function finishLocal(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        try{ DB = JSON.parse(raw); }catch(e){ console.error('Erro ao carregar dados', e); }
+        DB.plans = DB.plans || [];
+        DB.students = DB.students || [];
+        DB.sessions = DB.sessions || [];
+        DB.payments = DB.payments || [];
+        DB.pendingRegistrations = DB.pendingRegistrations || [];
+          DB.confirmations = DB.confirmations || [];
+      } else {
+        seedData();
+        saveDB();
+      }
+      resolve();
+    }
+
+    function tryFirestore(){
+      if(!window.__firebaseReady || !window.__firebase){
+        finishLocal();
+        return;
+      }
+      const { fsDb, doc, getDoc, onSnapshot } = window.__firebase;
+      const ref = doc(fsDb, FIRESTORE_DOC_PATH.collection, FIRESTORE_DOC_PATH.doc);
+
+      getDoc(ref).then(snap=>{
+        if(snap.exists()){
+          DB = snap.data();
+          // garante estrutura mínima
+          DB.plans = DB.plans || [];
+          DB.students = DB.students || [];
+          DB.sessions = DB.sessions || [];
+          DB.payments = DB.payments || [];
+          DB.pendingRegistrations = DB.pendingRegistrations || [];
+          DB.confirmations = DB.confirmations || [];
+        } else {
+          seedData();
+        }
+        // mantém uma cópia local como cache offline
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(DB));
+
+        // Listener em tempo real para refletir mudanças feitas em outro aparelho (ex: portal do aluno)
+        onSnapshot(ref, (snapshot)=>{
+          if(_suppressNextSnapshot){ _suppressNextSnapshot = false; return; }
+          if(snapshot.exists()){
+            DB = snapshot.data();
+            DB.plans = DB.plans || [];
+            DB.students = DB.students || [];
+            DB.sessions = DB.sessions || [];
+            DB.payments = DB.payments || [];
+          DB.pendingRegistrations = DB.pendingRegistrations || [];
+          DB.confirmations = DB.confirmations || [];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(DB));
+            if(typeof onRemoteUpdate === 'function') onRemoteUpdate();
+          }
+        });
+
+        if(!snap.exists()) saveDB();
+        resolve();
+      }).catch(err=>{
+        console.error('Erro ao carregar do Firestore, usando dados locais:', err);
+        finishLocal();
+      });
+    }
+
+    if(window.__firebaseReady !== undefined){
+      tryFirestore();
+    } else {
+      window.addEventListener('firebase-checked', tryFirestore, { once:true });
+    }
+  });
+}
+
+function saveDB(){
+  // Salva local imediatamente (rápido, offline-first)
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(DB));
+
+  // Sincroniza com Firestore em segundo plano (com debounce)
+  if(window.__firebaseReady && window.__firebase){
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(()=>{
+      const { fsDb, doc, setDoc } = window.__firebase;
+      const ref = doc(fsDb, FIRESTORE_DOC_PATH.collection, FIRESTORE_DOC_PATH.doc);
+      _suppressNextSnapshot = true;
+      setDoc(ref, DB).catch(err=>{
+        console.error('Erro ao salvar no Firestore:', err);
+        _suppressNextSnapshot = false;
+      });
+    }, 400);
+  }
+}
+
+// Chamado quando dados mudam remotamente (outro aparelho). Re-renderiza a tela atual.
+function onRemoteUpdate(){
+  // Portal do aluno (tela cheia, sem nav)
+  if(window._portalRenderFn){
+    window._portalRenderFn();
+    return;
+  }
+
+  const activeScreen = document.querySelector('.screen.active');
+  if(!activeScreen) return;
+  const name = activeScreen.id.replace('screen-','');
+  if(['home','students','agenda','plans','cash'].includes(name)){
+    showScreen(name);
+  } else if(name === 'student-detail'){
+    const sid = activeScreen.dataset.studentId;
+    if(sid) openStudentDetail(sid);
+  }
+}
+
+function uid(prefix){
+  return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+}
+
+/* ---------- Seed inicial (planos comuns) ---------- */
+function seedData(){
+  DB.plans = [
+    { id: uid('plan'), name: 'Mensal 1x/semana', perWeek: 1, totalAulas: 4, valorAula: 80 },
+    { id: uid('plan'), name: 'Mensal 2x/semana', perWeek: 2, totalAulas: 8, valorAula: 75 },
+    { id: uid('plan'), name: 'Mensal 3x/semana', perWeek: 3, totalAulas: 12, valorAula: 70 },
+  ];
+}
+
+/* ============================================================
+   UTIL
+   ============================================================ */
+function fmtMoney(v){
+  return 'R$ ' + (v||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function todayISO(){
+  const d = new Date();
+  return d.toISOString().slice(0,10);
+}
+function fmtDateBR(iso){
+  if(!iso) return '--';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+function weekdayShort(iso){
+  const d = new Date(iso + 'T12:00:00');
+  return ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'][d.getDay()];
+}
+function monthKey(iso){
+  return iso.slice(0,7); // YYYY-MM
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.bottomnav button').forEach(b=>b.classList.remove('active'));
+  const target = document.getElementById('screen-' + name);
+  if(target) target.classList.add('active');
+  const navBtn = document.querySelector(`.bottomnav button[data-screen="${name}"]`);
+  if(navBtn) navBtn.classList.add('active');
+  if(name==='home') renderHome();
+  if(name==='students') renderStudents();
+  if(name==='agenda') renderAgenda();
+  if(name==='plans') renderPlans();
+  if(name==='cash') renderCash();
+  window.scrollTo(0,0);
+}
+
+/* ============================================================
+   HEADER DATE
+   ============================================================ */
+function renderHeaderDate(){
+  const d = new Date();
+  const days = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const months = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  document.getElementById('header-day').textContent = days[d.getDay()];
+  document.getElementById('header-date').textContent = `${d.getDate()} ${months[d.getMonth()]}`;
+}
+
+/* ============================================================
+   SHEET (modal) HELPERS
+   ============================================================ */
+function openSheet(html){
+  const container = document.getElementById('sheet-container');
+  container.innerHTML = `
+    <div class="sheet-overlay active" id="active-sheet-overlay" onclick="if(event.target===this) closeSheet()">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        ${html}
+      </div>
+    </div>`;
+}
+function closeSheet(){
+  const ov = document.getElementById('active-sheet-overlay');
+  if(ov) ov.remove();
+}
+
+/* ============================================================
+   PLANOS
+   ============================================================ */
+function renderPlans(){
+  const list = document.getElementById('plans-list');
+  if(DB.plans.length === 0){
+    list.innerHTML = `<div class="empty">
+      <div class="icon">📋</div>
+      <div class="msg">Nenhum plano cadastrado</div>
+      <div class="sub">Cadastre os pacotes que você oferece</div>
+    </div>`;
+    return;
+  }
+  list.innerHTML = DB.plans.map(p => {
+    const total = p.totalAulas * p.valorAula;
+    const studentsUsing = DB.students.filter(s=>s.planId===p.id).length;
+    return `
+    <div class="card">
+      <div class="row-between">
+        <div>
+          <div style="font-weight:700; font-size:15px; margin-bottom:4px;">${escapeHtml(p.name)}</div>
+          <div class="text-dim" style="font-size:12px;">${p.perWeek}x por semana · ${p.totalAulas} aulas/mês</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="mono" style="font-weight:700; color:var(--gold); font-size:15px;">${fmtMoney(total)}</div>
+          <div class="text-faint" style="font-size:11px;">${fmtMoney(p.valorAula)}/aula</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="row-between">
+        <span class="text-faint" style="font-size:12px;">${studentsUsing} aluno(s) neste plano</span>
+        <div class="btn-row" style="width:auto; gap:8px;">
+          <button class="btn btn-secondary btn-sm" onclick="openPlanForm('${p.id}')">Editar</button>
+          <button class="btn btn-danger btn-sm" onclick="deletePlan('${p.id}')">Excluir</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openPlanForm(planId){
+  const plan = planId ? DB.plans.find(p=>p.id===planId) : null;
+  openSheet(`
+    <div class="sheet-title">
+      ${plan ? 'Editar plano' : 'Novo plano'}
+      <button class="sheet-close" onclick="closeSheet()">×</button>
+    </div>
+    <label>Nome do plano</label>
+    <input type="text" id="plan-name" placeholder="Ex: Mensal 2x/semana" value="${plan ? escapeHtml(plan.name) : ''}">
+
+    <label>Aulas por semana</label>
+    <select id="plan-perweek" onchange="updatePlanTotalFromWeek()">
+      <option value="1" ${plan&&plan.perWeek===1?'selected':''}>1x por semana</option>
+      <option value="2" ${plan&&plan.perWeek===2?'selected':''}>2x por semana</option>
+      <option value="3" ${plan&&plan.perWeek===3?'selected':''}>3x por semana</option>
+      <option value="4" ${plan&&plan.perWeek===4?'selected':''}>4x por semana</option>
+      <option value="5" ${plan&&plan.perWeek===5?'selected':''}>5x por semana</option>
+      <option value="0" ${plan&&plan.perWeek===0?'selected':''}>Personalizado (não calcula)</option>
+    </select>
+
+    <label>Total de aulas no pacote (mensal)</label>
+    <input type="number" id="plan-total" min="1" placeholder="Ex: 8" value="${plan ? plan.totalAulas : ''}">
+    <div class="hint">Sugestão automática: 1x = 4, 2x = 8, 3x = 12, 4x = 16. Pode ajustar manualmente.</div>
+
+    <label>Valor por aula (R$)</label>
+    <input type="number" id="plan-valor" min="0" step="0.01" placeholder="Ex: 75.00" value="${plan ? plan.valorAula : ''}" oninput="updatePlanPreview()">
+
+    <div class="card-flat" style="margin-bottom:14px;">
+      <div class="row-between">
+        <span class="text-dim" style="font-size:12px;">Valor total do pacote</span>
+        <span class="mono" style="font-weight:700; color:var(--gold);" id="plan-preview-total">R$ 0,00</span>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="savePlan('${plan ? plan.id : ''}')">Salvar plano</button>
+  `);
+  // attach listeners for total field too
+  document.getElementById('plan-total').addEventListener('input', updatePlanPreview);
+  updatePlanPreview();
+}
+
+function updatePlanTotalFromWeek(){
+  const perWeek = parseInt(document.getElementById('plan-perweek').value);
+  const totalField = document.getElementById('plan-total');
+  if(perWeek > 0){
+    totalField.value = perWeek * 4;
+  }
+  updatePlanPreview();
+}
+
+function updatePlanPreview(){
+  const total = parseFloat(document.getElementById('plan-total').value) || 0;
+  const valor = parseFloat(document.getElementById('plan-valor').value) || 0;
+  document.getElementById('plan-preview-total').textContent = fmtMoney(total * valor);
+}
+
+function savePlan(planId){
+  const name = document.getElementById('plan-name').value.trim();
+  const perWeek = parseInt(document.getElementById('plan-perweek').value);
+  const totalAulas = parseInt(document.getElementById('plan-total').value);
+  const valorAula = parseFloat(document.getElementById('plan-valor').value);
+
+  if(!name || !totalAulas || !valorAula){
+    showToast('Preencha todos os campos');
+    return;
+  }
+
+  if(planId){
+    const plan = DB.plans.find(p=>p.id===planId);
+    Object.assign(plan, { name, perWeek, totalAulas, valorAula });
+  } else {
+    DB.plans.push({ id: uid('plan'), name, perWeek, totalAulas, valorAula });
+  }
+  saveDB();
+  closeSheet();
+  renderPlans();
+  showToast('Plano salvo');
+}
+
+function deletePlan(planId){
+  const inUse = DB.students.some(s=>s.planId===planId);
+  if(inUse){
+    showToast('Plano em uso por aluno(s). Remova o vínculo antes.');
+    return;
+  }
+  if(!confirm('Excluir este plano?')) return;
+  DB.plans = DB.plans.filter(p=>p.id!==planId);
+  saveDB();
+  renderPlans();
+}
+
+/* ============================================================
+   HELPERS GERAIS
+   ============================================================ */
+function escapeHtml(str){
+  if(!str) return '';
+  return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function initials(name){
+  return name.trim().split(/\s+/).slice(0,2).map(p=>p[0]).join('').toUpperCase();
+}
+function getPlan(planId){
+  return DB.plans.find(p=>p.id===planId);
+}
+
+/* ============================================================
+   ALUNOS
+   ============================================================ */
+function renderStudents(){
+  renderPendingRegistrations();
+  const list = document.getElementById('students-list');
+  if(DB.students.length === 0){
+    list.innerHTML = `<div class="empty">
+      <div class="icon">👤</div>
+      <div class="msg">Nenhum aluno cadastrado</div>
+      <div class="sub">Toque em "Novo aluno" para começar</div>
+    </div>`;
+    return;
+  }
+  list.innerHTML = DB.students.map(s => {
+    const plan = getPlan(s.planId);
+    const used = sessionsUsedInCurrentPackage(s);
+    const total = plan ? plan.totalAulas : 0;
+    const remaining = total - used;
+    let pillClass = '';
+    if(remaining <= 0) pillClass = 'zero';
+    else if(remaining <= 1) pillClass = 'low';
+    return `
+    <div class="student-card" onclick="openStudentDetail('${s.id}')">
+      <div class="student-avatar">${initials(s.name)}</div>
+      <div class="student-info">
+        <div class="name">${escapeHtml(s.name)}</div>
+        <div class="plan">${plan ? escapeHtml(plan.name) : 'Sem plano'}</div>
+      </div>
+      <div class="student-meta">
+        <span class="progress-pill ${pillClass}">${used}/${total}</span>
+        <div class="sub">restantes: ${Math.max(remaining,0)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openStudentForm(studentId){
+  const student = studentId ? DB.students.find(s=>s.id===studentId) : null;
+  if(DB.plans.length === 0){
+    showToast('Cadastre um plano primeiro');
+    showScreen('plans');
+    return;
+  }
+  openSheet(`
+    <div class="sheet-title">
+      ${student ? 'Editar aluno' : 'Novo aluno'}
+      <button class="sheet-close" onclick="closeSheet()">×</button>
+    </div>
+    <label>Nome completo</label>
+    <input type="text" id="student-name" placeholder="Nome do aluno" value="${student ? escapeHtml(student.name) : ''}">
+
+    <label>WhatsApp (com DDD)</label>
+    <input type="tel" id="student-phone" placeholder="Ex: 19999998888" value="${student ? escapeHtml(student.phone||'') : ''}">
+    <div class="hint">Só números. Usado para enviar mensagens e o link de cadastro.</div>
+
+    <label>Plano</label>
+    <select id="student-plan">
+      ${DB.plans.map(p=>`<option value="${p.id}" ${student&&student.planId===p.id?'selected':''}>${escapeHtml(p.name)} (${p.totalAulas} aulas · ${fmtMoney(p.valorAula)}/aula)</option>`).join('')}
+    </select>
+
+    <label>Data de início do pacote atual</label>
+    <input type="date" id="student-start" value="${student ? (student.packageStart||todayISO()) : todayISO()}">
+    <div class="hint">Usada para contar quais aulas pertencem ao pacote atual.</div>
+
+    <div class="divider"></div>
+    <div class="text-dim" style="font-size:12px; margin-bottom:10px;">Agenda de aulas</div>
+
+    <label>Tipo de agendamento</label>
+    <select id="student-schedule-type" onchange="toggleScheduleFields()">
+      <option value="fixed" ${student&&student.schedule&&student.schedule.type==='fixed'?'selected':''}>Dias fixos semanais</option>
+      <option value="biweekly" ${student&&student.schedule&&student.schedule.type==='biweekly'?'selected':''}>Alternado (semana sim, semana não)</option>
+      <option value="flex" ${student&&student.schedule&&student.schedule.type==='flex'?'selected':''}>Avulso / Híbrido (agendo manualmente)</option>
+    </select>
+
+    <div id="schedule-fixed-fields">
+      <label>Dias da semana e horário</label>
+      ${[0,1,2,3,4,5,6].map(d=>{
+        const dayNames = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+        const existing = student && student.schedule && student.schedule.days ? student.schedule.days.find(x=>x.day===d) : null;
+        return `
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+          <label style="display:flex; align-items:center; gap:8px; margin:0; flex:1; font-weight:500; color:var(--text); font-size:13px;">
+            <input type="checkbox" id="day-${d}-check" ${existing?'checked':''} onchange="toggleDayTime(${d})" style="width:18px; height:18px; margin:0; flex:0 0 auto;">
+            ${dayNames[d]}
+          </label>
+          <input type="time" id="day-${d}-time" value="${existing?existing.time:'07:00'}" style="width:110px; margin:0;" ${existing?'':'disabled'}>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div id="schedule-biweekly-fields" style="display:none;">
+      <label>Dia da semana e horário</label>
+      <select id="biweekly-day">
+        ${['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'].map((n,i)=>`<option value="${i}" ${student&&student.schedule&&student.schedule.biweeklyDay===i?'selected':''}>${n}</option>`).join('')}
+      </select>
+      <label>Horário</label>
+      <input type="time" id="biweekly-time" value="${student&&student.schedule&&student.schedule.biweeklyTime?student.schedule.biweeklyTime:'07:00'}">
+      <label>Próxima data que ele(a) treina</label>
+      <input type="date" id="biweekly-anchor" value="${student&&student.schedule&&student.schedule.biweeklyAnchor?student.schedule.biweeklyAnchor:todayISO()}">
+      <div class="hint">A partir dessa data, alterna semana sim / semana não.</div>
+    </div>
+
+    <div id="schedule-flex-fields" style="display:none;">
+      <div class="hint">Tipo avulso/híbrido: você agenda cada aula manualmente na aba Agenda ou na tela do aluno.</div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="text-dim" style="font-size:12px; margin-bottom:10px;">Dados pessoais (preenchidos via link ou manualmente)</div>
+
+    <label>CPF</label>
+    <input type="text" id="student-cpf" placeholder="000.000.000-00" value="${student ? escapeHtml(student.cpf||'') : ''}">
+
+    <label>Data de nascimento</label>
+    <input type="date" id="student-birth" value="${student ? (student.birth||'') : ''}">
+
+    <button class="btn btn-primary" onclick="saveStudent('${student ? student.id : ''}')">Salvar aluno</button>
+    ${student ? `
+    <div class="btn-row" style="margin-top:8px;">
+      <button class="btn btn-secondary" onclick="copyRegisterLink('${student.id}')">🔗 Link de cadastro</button>
+      <button class="btn btn-secondary" onclick="generateContractPDF('${student.id}')">📄 Contrato PDF</button>
+    </div>
+    ` : ''}
+  `);
+  toggleScheduleFields();
+}
+
+function toggleScheduleFields(){
+  const type = document.getElementById('student-schedule-type').value;
+  document.getElementById('schedule-fixed-fields').style.display = type==='fixed' ? '' : 'none';
+  document.getElementById('schedule-biweekly-fields').style.display = type==='biweekly' ? '' : 'none';
+  document.getElementById('schedule-flex-fields').style.display = type==='flex' ? '' : 'none';
+}
+
+function toggleDayTime(day){
+  const checked = document.getElementById(`day-${day}-check`).checked;
+  document.getElementById(`day-${day}-time`).disabled = !checked;
+}
+
+function saveStudent(studentId){
+  const name = document.getElementById('student-name').value.trim();
+  const phone = document.getElementById('student-phone').value.trim();
+  const planId = document.getElementById('student-plan').value;
+  const packageStart = document.getElementById('student-start').value;
+  const cpf = document.getElementById('student-cpf').value.trim();
+  const birth = document.getElementById('student-birth').value;
+
+  if(!name || !planId){
+    showToast('Preencha nome e plano');
+    return;
+  }
+
+  // Monta o objeto de agenda
+  const scheduleType = document.getElementById('student-schedule-type').value;
+  const existingStudent = studentId ? DB.students.find(s=>s.id===studentId) : null;
+  const existingFlexDates = (existingStudent && existingStudent.schedule && existingStudent.schedule.flexDates) || [];
+
+  let schedule = { type: scheduleType, flexDates: existingFlexDates };
+
+  if(scheduleType === 'fixed'){
+    schedule.days = [];
+    [0,1,2,3,4,5,6].forEach(d=>{
+      const checkEl = document.getElementById(`day-${d}-check`);
+      if(checkEl && checkEl.checked){
+        const time = document.getElementById(`day-${d}-time`).value || '07:00';
+        schedule.days.push({ day: d, time });
+      }
+    });
+  } else if(scheduleType === 'biweekly'){
+    schedule.biweeklyDay = parseInt(document.getElementById('biweekly-day').value);
+    schedule.biweeklyTime = document.getElementById('biweekly-time').value || '07:00';
+    schedule.biweeklyAnchor = document.getElementById('biweekly-anchor').value || todayISO();
+  }
+
+  if(studentId){
+    const student = DB.students.find(s=>s.id===studentId);
+    Object.assign(student, { name, phone, planId, packageStart, cpf, birth, schedule });
+  } else {
+    DB.students.push({
+      id: uid('stu'), name, phone, planId, packageStart, cpf, birth, schedule,
+      status: 'ativo', createdAt: todayISO()
+    });
+  }
+  saveDB();
+  closeSheet();
+  renderStudents();
+  renderHome();
+  showToast('Aluno salvo');
+}
+
+function deleteStudent(studentId){
+  if(!confirm('Excluir este aluno e todo o histórico de aulas/pagamentos dele?')) return;
+  DB.students = DB.students.filter(s=>s.id!==studentId);
+  DB.sessions = DB.sessions.filter(sess=>sess.studentId!==studentId);
+  DB.payments = DB.payments.filter(p=>p.studentId!==studentId);
+  saveDB();
+  showScreen('students');
+}
+
+/* ---------- Reset de pacote (renovação) ---------- */
+function renewPackage(studentId){
+  const student = DB.students.find(s=>s.id===studentId);
+  const plan = getPlan(student.planId);
+  if(!confirm(`Renovar pacote de ${student.name}?\nNovo ciclo de ${plan.totalAulas} aulas começando hoje.\nIsto vai zerar o contador de aulas (sem acumular).`)) return;
+
+  student.packageStart = todayISO();
+
+  // Registrar pagamento automaticamente
+  DB.payments.push({
+    id: uid('pay'),
+    studentId: student.id,
+    planId: student.planId,
+    amount: plan.totalAulas * plan.valorAula,
+    date: todayISO(),
+    note: 'Renovação de pacote'
+  });
+
+  saveDB();
+  showToast('Pacote renovado e pagamento registrado');
+  openStudentDetail(studentId);
+  renderHome();
+}
+
+/* ============================================================
+   SESSÕES / CHECK-IN — regras de negócio
+   ============================================================ */
+
+// Sessões do pacote atual (a partir de packageStart, inclusive)
+function sessionsInCurrentPackage(student){
+  return DB.sessions
+    .filter(sess => sess.studentId === student.id && sess.date >= student.packageStart)
+    .sort((a,b)=> a.date.localeCompare(b.date));
+}
+
+// Quantas aulas contam contra o pacote (realizada + cancelada <24h)
+function sessionsUsedInCurrentPackage(student){
+  return sessionsInCurrentPackage(student)
+    .filter(s => s.status === 'realizada' || s.status === 'cancelada_menos24h')
+    .length;
+}
+
+// Créditos de reposição usados no mês atual (cancelada_24h conta como crédito usado)
+function repositionCreditsUsed(student, monthRef){
+  monthRef = monthRef || monthKey(todayISO());
+  return DB.sessions.filter(sess =>
+    sess.studentId === student.id &&
+    sess.status === 'cancelada_24h' &&
+    monthKey(sess.date) === monthRef
+  ).length;
+}
+
+const REPOSITION_LIMIT_PER_MONTH = 2;
+
+function repositionCreditsAvailable(student){
+  const used = repositionCreditsUsed(student);
+  return Math.max(REPOSITION_LIMIT_PER_MONTH - used, 0);
+}
+
+/* Adiciona check-in / registro de aula */
+function addSession(studentId, status, note){
+  const student = DB.students.find(s=>s.id===studentId);
+
+  if(status === 'cancelada_24h' && repositionCreditsAvailable(student) <= 0){
+    if(!confirm('Este aluno já usou as 2 reposições do mês.\nRegistrar mesmo assim como cancelamento ≥24h (sem desconto, sem crédito extra)?')){
+      return false;
+    }
+  }
+
+  DB.sessions.push({
+    id: uid('sess'),
+    studentId,
+    date: todayISO(),
+    status, // realizada | cancelada_24h | cancelada_menos24h | falta
+    note: note || ''
+  });
+  saveDB();
+  return true;
+}
+
+function removeSession(sessionId){
+  if(!confirm('Remover este registro de aula?')) return;
+  DB.sessions = DB.sessions.filter(s=>s.id!==sessionId);
+  saveDB();
+  renderHome();
+  // refresh detail if open
+  const detail = document.getElementById('screen-student-detail');
+  if(detail.classList.contains('active')){
+    const sid = detail.dataset.studentId;
+    if(sid) openStudentDetail(sid);
+  }
+}
+
+const STATUS_LABELS = {
+  realizada: { label:'Realizada', class:'badge-ok', icon:'✓' },
+  cancelada_24h: { label:'Reposição (≥24h)', class:'badge-info', icon:'↻' },
+  cancelada_menos24h: { label:'Cancelou <24h', class:'badge-warn', icon:'⚠' },
+  falta: { label:'Falta', class:'badge-danger', icon:'✕' },
+};
+
+// Descreve a agenda do aluno em texto legível
+function describeSchedule(student){
+  const sch = student.schedule;
+  if(!sch) return 'Não configurada';
+
+  if(sch.type === 'fixed'){
+    if(!sch.days || sch.days.length === 0) return 'Nenhum dia fixo';
+    return sch.days
+      .slice().sort((a,b)=>a.day-b.day)
+      .map(d=>`${WEEKDAY_SHORT[d.day]} ${d.time}`)
+      .join(', ');
+  }
+  if(sch.type === 'biweekly'){
+    return `${WEEKDAY_NAMES[sch.biweeklyDay]} ${sch.biweeklyTime} (alternado)`;
+  }
+  if(sch.type === 'flex'){
+    const count = sch.flexDates ? sch.flexDates.length : 0;
+    return count > 0 ? `Avulso · ${count} agendada(s)` : 'Avulso/Híbrido';
+  }
+  return 'Não configurada';
+}
+
+/* ============================================================
+   AGENDA — helpers
+   ============================================================ */
+const WEEKDAY_NAMES = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+const WEEKDAY_SHORT = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
+
+// Diferença em dias entre duas datas ISO (b - a)
+function daysBetween(aISO, bISO){
+  const a = new Date(aISO + 'T00:00:00');
+  const b = new Date(bISO + 'T00:00:00');
+  return Math.round((b - a) / 86400000);
+}
+
+// Retorna o horário (HH:MM) se o aluno tem aula na data informada, ou null
+function scheduleTimeForDate(student, dateISO){
+  const sch = student.schedule;
+  if(!sch) return null;
+  const weekday = new Date(dateISO + 'T12:00:00').getDay();
+
+  // Datas avulsas extras valem para qualquer tipo de agenda
+  if(sch.flexDates){
+    const extra = sch.flexDates.find(f => f.date === dateISO);
+    if(extra) return extra.time;
+  }
+
+  if(sch.type === 'fixed'){
+    const entry = (sch.days || []).find(d => d.day === weekday);
+    return entry ? entry.time : null;
+  }
+
+  if(sch.type === 'biweekly'){
+    if(sch.biweeklyDay !== weekday) return null;
+    if(!sch.biweeklyAnchor) return null;
+    const diff = daysBetween(sch.biweeklyAnchor, dateISO);
+    if(diff < 0) return null;
+    const weeksDiff = diff / 7;
+    // Só conta se for um múltiplo exato de 7 dias (mesmo dia da semana) e a diferença de semanas for par
+    if(Math.round(weeksDiff) % 2 === 0 && diff % 7 === 0){
+      return sch.biweeklyTime || '07:00';
+    }
+    return null;
+  }
+
+  return null;
+}
+
+// Retorna lista de {student, time} para uma data, ordenada por horário
+function studentsForDate(dateISO){
+  const result = [];
+  DB.students.forEach(s=>{
+    const time = scheduleTimeForDate(s, dateISO);
+    if(time) result.push({ student: s, time });
+  });
+  result.sort((a,b)=> a.time.localeCompare(b.time));
+  return result;
+}
+
+// Adiciona/remove uma data avulsa extra (além da agenda regular do aluno)
+function addFlexDate(studentId, dateISO, time){
+  const student = DB.students.find(s=>s.id===studentId);
+  if(!student.schedule){
+    student.schedule = { type:'flex', flexDates: [] };
+  }
+  if(!student.schedule.flexDates) student.schedule.flexDates = [];
+  // remove existente na mesma data, se houver
+  student.schedule.flexDates = student.schedule.flexDates.filter(f=>f.date!==dateISO);
+  student.schedule.flexDates.push({ date: dateISO, time: time || '07:00' });
+  saveDB();
+}
+
+function removeFlexDate(studentId, dateISO){
+  const student = DB.students.find(s=>s.id===studentId);
+  if(!student.schedule || !student.schedule.flexDates) return;
+  student.schedule.flexDates = student.schedule.flexDates.filter(f=>f.date!==dateISO);
+  saveDB();
+}
+
+/* ============================================================
+   TELA HOJE
+   ============================================================ */
+/* ============================================================
+   CONFIRMAR AULAS DE AMANHÃ
+   ============================================================ */
+function tomorrowISO(){
+  const d = new Date();
+  d.setDate(d.getDate()+1);
+  return d.toISOString().slice(0,10);
+}
+
+function renderTomorrowConfirm(){
+  const container = document.getElementById('tomorrow-confirm-section');
+  const tomorrow = tomorrowISO();
+  const entries = studentsForDate(tomorrow);
+
+  if(entries.length === 0){
+    container.innerHTML = '';
+    return;
+  }
+
+  // Filtra quem ainda não teve confirmação enviada para amanhã
+  const pending = entries.filter(({student})=>{
+    return !DB.confirmations.some(c=>c.studentId===student.id && c.date===tomorrow);
+  });
+
+  if(pending.length === 0){
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="section-title"><span class="accent"></span>Confirmar aulas de amanhã (${pending.length})</div>
+    <div class="card">
+      ${pending.map(({student:s, time})=>`
+        <div class="history-item">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="mono" style="font-weight:700; font-size:12px; color:var(--blue); min-width:38px;">${escapeHtml(time)}</span>
+            <span style="font-size:13px;">${escapeHtml(s.name)}</span>
+          </div>
+          ${s.phone
+            ? `<button class="btn btn-whatsapp btn-sm" style="width:auto;" onclick="sendConfirmMessage('${s.id}','${tomorrow}')">💬 Confirmar</button>`
+            : `<span class="badge badge-muted">Sem WhatsApp</span>`}
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderHome(){
+  const today = todayISO();
+  const list = document.getElementById('today-list');
+
+  renderTomorrowConfirm();
+
+  const scheduled = studentsForDate(today);
+  // alunos sem agenda configurada (legado / não cadastrada ainda) - mostra também, sem horário
+  const scheduledIds = new Set(scheduled.map(x=>x.student.id));
+  const unscheduled = DB.students.filter(s => !s.schedule && !scheduledIds.has(s.id));
+
+  if(DB.students.length === 0){
+    list.innerHTML = `<div class="empty">
+      <div class="icon">📅</div>
+      <div class="msg">Nenhum aluno cadastrado ainda</div>
+      <div class="sub">Cadastre planos e alunos para começar</div>
+    </div>`;
+  } else if(scheduled.length === 0 && unscheduled.length === 0){
+    list.innerHTML = `<div class="empty">
+      <div class="icon">🌴</div>
+      <div class="msg">Sem aulas agendadas para hoje</div>
+      <div class="sub">Confira a agenda semanal na aba Agenda</div>
+    </div>`;
+  } else {
+    const allEntries = [
+      ...scheduled.map(x=>({ student: x.student, time: x.time })),
+      ...unscheduled.map(s=>({ student: s, time: null }))
+    ];
+
+    list.innerHTML = allEntries.map(({student: s, time}) => {
+      const todaySession = DB.sessions.find(sess => sess.studentId===s.id && sess.date===today);
+      const plan = getPlan(s.planId);
+      const used = sessionsUsedInCurrentPackage(s);
+      const remaining = (plan ? plan.totalAulas : 0) - used;
+
+      let statusHtml = '';
+      if(todaySession){
+        const st = STATUS_LABELS[todaySession.status];
+        statusHtml = `<span class="badge ${st.class}">${st.icon} ${st.label}</span>`;
+      } else {
+        statusHtml = `<span class="badge badge-muted">Sem check-in</span>`;
+      }
+
+      return `
+      <div class="card">
+        <div class="row-between" style="margin-bottom:10px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            ${time ? `<div class="mono" style="font-weight:700; font-size:13px; color:var(--blue); min-width:42px;">${escapeHtml(time)}</div>` : `<div class="student-avatar" style="width:38px; height:38px; font-size:13px;">${initials(s.name)}</div>`}
+            <div>
+              <div style="font-weight:700; font-size:14px;">${escapeHtml(s.name)}</div>
+              <div class="text-faint" style="font-size:11px;">${plan ? escapeHtml(plan.name) : ''} · restam ${Math.max(remaining,0)}</div>
+            </div>
+          </div>
+          ${statusHtml}
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-whatsapp btn-sm" style="flex:1;" onclick="sendConfirmMessage('${s.id}')">💬 Confirmar</button>
+          <button class="btn btn-primary btn-sm" style="flex:1;" onclick="openCheckin('${s.id}')">${todaySession ? 'Editar check-in' : 'Check-in'}</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Resumo do mês
+  const mKey = monthKey(today);
+  const sessionsThisMonth = DB.sessions.filter(s=> monthKey(s.date)===mKey && (s.status==='realizada' || s.status==='cancelada_menos24h'));
+  document.getElementById('stat-aulas-mes').textContent = sessionsThisMonth.length;
+
+  const paymentsThisMonth = DB.payments.filter(p=> monthKey(p.date)===mKey);
+  const totalThisMonth = paymentsThisMonth.reduce((acc,p)=>acc+p.amount, 0);
+  document.getElementById('stat-receita-mes').textContent = fmtMoney(totalThisMonth);
+
+  // Alertas
+  renderAlerts();
+}
+
+function renderAlerts(){
+  const alertsList = document.getElementById('alerts-list');
+  const alerts = [];
+
+  DB.students.forEach(s=>{
+    const plan = getPlan(s.planId);
+    if(!plan) return;
+    const used = sessionsUsedInCurrentPackage(s);
+    const remaining = plan.totalAulas - used;
+
+    if(remaining <= 0){
+      alerts.push({type:'danger', text:`${s.name}: pacote esgotado (${used}/${plan.totalAulas}). Renovar.`, studentId:s.id});
+    } else if(remaining === 1){
+      alerts.push({type:'warn', text:`${s.name}: falta apenas 1 aula no pacote.`, studentId:s.id});
+    }
+  });
+
+  if(alerts.length === 0){
+    alertsList.innerHTML = `<div class="empty" style="padding:24px 20px;">
+      <div class="sub">Nada pendente por aqui 👍</div>
+    </div>`;
+    return;
+  }
+
+  alertsList.innerHTML = alerts.map(a=>`
+    <div class="card" style="display:flex; align-items:center; justify-content:space-between; gap:10px;" onclick="openStudentDetail('${a.studentId}')">
+      <span class="badge ${a.type==='danger'?'badge-danger':'badge-warn'}">${a.type==='danger'?'Esgotado':'Atenção'}</span>
+      <span style="font-size:13px; flex:1;">${escapeHtml(a.text)}</span>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   CHECK-IN (sheet)
+   ============================================================ */
+function openCheckin(studentId){
+  const student = DB.students.find(s=>s.id===studentId);
+  const today = todayISO();
+  const existing = DB.sessions.find(sess=>sess.studentId===studentId && sess.date===today);
+  const credits = repositionCreditsAvailable(student);
+
+  openSheet(`
+    <div class="sheet-title">
+      Check-in · ${escapeHtml(student.name)}
+      <button class="sheet-close" onclick="closeSheet()">×</button>
+    </div>
+    <div class="text-dim" style="font-size:13px; margin-bottom:14px;">Hoje · ${fmtDateBR(today)}</div>
+
+    <div class="card-flat" style="margin-bottom:16px;">
+      <div class="row-between">
+        <span class="text-dim" style="font-size:12px;">Reposições disponíveis este mês</span>
+        <span class="mono" style="font-weight:700; color:${credits>0?'var(--ok)':'var(--danger)'};">${credits}/${REPOSITION_LIMIT_PER_MONTH}</span>
+      </div>
+    </div>
+
+    <label>Como foi a aula de hoje?</label>
+    <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;">
+      <button class="btn btn-secondary" style="justify-content:flex-start;" onclick="confirmCheckin('${studentId}','realizada')">
+        ✓ Aula realizada <span class="text-faint" style="margin-left:auto; font-size:11px;">desconta do pacote</span>
+      </button>
+      <button class="btn btn-secondary" style="justify-content:flex-start;" onclick="confirmCheckin('${studentId}','cancelada_24h')">
+        ↻ Cancelou com ≥24h <span class="text-faint" style="margin-left:auto; font-size:11px;">vira reposição</span>
+      </button>
+      <button class="btn btn-secondary" style="justify-content:flex-start;" onclick="confirmCheckin('${studentId}','cancelada_menos24h')">
+        ⚠ Cancelou com &lt;24h <span class="text-faint" style="margin-left:auto; font-size:11px;">desconta do pacote</span>
+      </button>
+      <button class="btn btn-secondary" style="justify-content:flex-start;" onclick="confirmCheckin('${studentId}','falta')">
+        ✕ Faltou sem aviso <span class="text-faint" style="margin-left:auto; font-size:11px;">desconta do pacote</span>
+      </button>
+    </div>
+
+    <label>Observação (opcional)</label>
+    <textarea id="checkin-note" rows="2" placeholder="Ex: treino de pernas, sentiu dor no joelho...">${existing ? escapeHtml(existing.note||'') : ''}</textarea>
+
+    ${existing ? `<button class="btn btn-danger" onclick="removeSession('${existing.id}'); closeSheet();">Remover check-in de hoje</button>` : ''}
+  `);
+}
+
+function confirmCheckin(studentId, status){
+  const note = document.getElementById('checkin-note').value.trim();
+  const today = todayISO();
+  // Remove existing session for today (overwrite)
+  const existing = DB.sessions.find(sess=>sess.studentId===studentId && sess.date===today);
+  if(existing){
+    DB.sessions = DB.sessions.filter(s=>s.id!==existing.id);
+  }
+  const ok = addSession(studentId, status, note);
+  if(ok === false) return;
+  closeSheet();
+  renderHome();
+  const detail = document.getElementById('screen-student-detail');
+  if(detail.classList.contains('active')){
+    const sid = detail.dataset.studentId;
+    if(sid) openStudentDetail(sid);
+  }
+  showToast('Check-in registrado');
+}
+
+/* ============================================================
+   WHATSAPP — confirmação de aula
+   ============================================================ */
+function sendConfirmMessage(studentId, targetDate){
+  const student = DB.students.find(s=>s.id===studentId);
+  if(!student.phone){
+    showToast('Cadastre o WhatsApp do aluno primeiro');
+    return;
+  }
+  const date = targetDate || todayISO();
+  const firstName = student.name.split(' ')[0];
+  const isToday = date === todayISO();
+  const dayLabel = isToday ? `hoje, ${fmtDateBR(date)}` : `amanhã, ${fmtDateBR(date)}`;
+  const msg = `Oi ${firstName}! Tudo bem? Confirmando: tem aula ${dayLabel}? Me avisa por aqui 💪`;
+  const phone = student.phone.replace(/\D/g,'');
+  const url = `https://wa.me/55${phone}?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+
+  // Marca como confirmação enviada (para a lista "Confirmar amanhã" sumir esse aluno)
+  markConfirmationSent(studentId, date);
+}
+
+function markConfirmationSent(studentId, date){
+  const exists = DB.confirmations.find(c=>c.studentId===studentId && c.date===date);
+  if(!exists){
+    DB.confirmations.push({ studentId, date });
+    saveDB();
+  }
+  renderHome();
+}
+
+/* ============================================================
+   DETALHE DO ALUNO
+   ============================================================ */
+function openStudentDetail(studentId){
+  const student = DB.students.find(s=>s.id===studentId);
+  const plan = getPlan(student.planId);
+  const used = sessionsUsedInCurrentPackage(student);
+  const remaining = (plan ? plan.totalAulas : 0) - used;
+  const credits = repositionCreditsAvailable(student);
+
+  const sessions = sessionsInCurrentPackage(student).slice().reverse();
+
+  document.getElementById('screen-student-detail').dataset.studentId = studentId;
+
+  document.getElementById('student-detail-content').innerHTML = `
+    <div style="display:flex; align-items:center; gap:14px; margin-bottom:18px;">
+      <div class="student-avatar" style="width:56px; height:56px; font-size:18px;">${initials(student.name)}</div>
+      <div>
+        <div style="font-family:'Archivo Black', sans-serif; font-size:18px;">${escapeHtml(student.name)}</div>
+        <div class="text-dim" style="font-size:13px;">${plan ? escapeHtml(plan.name) : 'Sem plano'}</div>
+      </div>
+    </div>
+
+    <div class="stat-grid cols-3" style="margin-bottom:14px;">
+      <div class="stat-box">
+        <div class="value">${used}/${plan?plan.totalAulas:0}</div>
+        <div class="label">Usadas</div>
+      </div>
+      <div class="stat-box">
+        <div class="value ${remaining<=0?'':'green'}" style="${remaining<=0?'color:var(--danger);':''}">${Math.max(remaining,0)}</div>
+        <div class="label">Restantes</div>
+      </div>
+      <div class="stat-box">
+        <div class="value ${credits>0?'green':''}" style="${credits<=0?'color:var(--danger);':''}">${credits}/${REPOSITION_LIMIT_PER_MONTH}</div>
+        <div class="label">Reposições</div>
+      </div>
+    </div>
+
+    ${remaining<=0 ? `<button class="btn btn-primary" style="margin-bottom:10px;" onclick="renewPackage('${student.id}')">🔄 Renovar pacote</button>` : ''}
+
+    <div class="btn-row" style="margin-bottom:14px;">
+      <button class="btn btn-secondary" onclick="sendConfirmMessage('${student.id}')">💬 WhatsApp</button>
+      <button class="btn btn-secondary" onclick="openCheckin('${student.id}')">✓ Check-in hoje</button>
+    </div>
+
+    <div class="card-flat" style="margin-bottom:14px;">
+      <div class="row-between" style="margin-bottom:8px;">
+        <span class="text-dim" style="font-size:12px;">WhatsApp</span>
+        <span class="mono" style="font-size:13px;">${student.phone || '—'}</span>
+      </div>
+      <div class="row-between" style="margin-bottom:8px;">
+        <span class="text-dim" style="font-size:12px;">CPF</span>
+        <span class="mono" style="font-size:13px;">${student.cpf || '—'}</span>
+      </div>
+      <div class="row-between">
+        <span class="text-dim" style="font-size:12px;">Pacote desde</span>
+        <span class="mono" style="font-size:13px;">${fmtDateBR(student.packageStart)}</span>
+      </div>
+      <div class="divider"></div>
+      <div class="row-between">
+        <span class="text-dim" style="font-size:12px;">Contrato</span>
+        ${student.contractSignedAt
+          ? `<span class="badge badge-ok">✓ Assinado ${fmtDateBR(student.contractSignedAt.slice(0,10))}</span>`
+          : `<span class="badge badge-warn">Pendente</span>`}
+      </div>
+      <div class="divider"></div>
+      <div class="row-between">
+        <span class="text-dim" style="font-size:12px;">Agenda</span>
+        <span style="font-size:12px; text-align:right; max-width:60%;">${describeSchedule(student)}</span>
+      </div>
+      ${student.note ? `
+      <div class="divider"></div>
+      <div class="row-between">
+        <span class="text-dim" style="font-size:12px;">Observações</span>
+        <span style="font-size:12px; text-align:right; max-width:60%;">${escapeHtml(student.note)}</span>
+      </div>` : ''}
+    </div>
+
+    <div class="btn-row" style="margin-bottom:8px;">
+      <button class="btn btn-secondary btn-sm" onclick="openStudentForm('${student.id}')">✏️ Editar</button>
+      <button class="btn btn-secondary btn-sm" onclick="copyRegisterLink('${student.id}')">🔗 Link cadastro</button>
+      <button class="btn btn-secondary btn-sm" onclick="generateContractPDF('${student.id}')">📄 Contrato</button>
+    </div>
+    <div class="btn-row" style="margin-bottom:18px;">
+      <button class="btn btn-secondary btn-sm" onclick="copyPortalLink('${student.id}')">📱 Link de acompanhamento</button>
+    </div>
+
+    <div class="section-title"><span class="accent"></span>Histórico (pacote atual)</div>
+    ${sessions.length===0 ? `<div class="empty" style="padding:20px;"><div class="sub">Nenhuma aula registrada neste pacote</div></div>` : `
+    <div class="card">
+      ${sessions.map(s=>{
+        const st = STATUS_LABELS[s.status];
+        return `<div class="history-item">
+          <div>
+            <div class="date">${fmtDateBR(s.date)} · ${weekdayShort(s.date)}</div>
+            ${s.note ? `<div class="text-faint" style="font-size:11px; margin-top:2px;">${escapeHtml(s.note)}</div>` : ''}
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="badge ${st.class}">${st.icon} ${st.label}</span>
+            <button class="sheet-close" style="font-size:16px;" onclick="removeSession('${s.id}')">×</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`}
+
+    <div class="section-title"><span class="accent"></span>Pagamentos</div>
+    ${renderStudentPayments(student.id)}
+
+    <button class="btn btn-danger" style="margin-top:18px;" onclick="deleteStudent('${student.id}')">Excluir aluno</button>
+  `;
+
+  showScreen('student-detail');
+  // override active nav highlight back to students since detail isn't a tab
+  document.querySelectorAll('.bottomnav button').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.bottomnav button[data-screen="students"]').classList.add('active');
+}
+
+function renderStudentPayments(studentId){
+  const payments = DB.payments.filter(p=>p.studentId===studentId).slice().reverse();
+  if(payments.length===0){
+    return `<div class="empty" style="padding:20px;"><div class="sub">Nenhum pagamento registrado</div></div>`;
+  }
+  return `<div class="card">
+    ${payments.map(p=>`
+      <div class="history-item">
+        <div>
+          <div class="date">${fmtDateBR(p.date)}</div>
+          <div class="text-faint" style="font-size:11px; margin-top:2px;">${escapeHtml(p.note||'')}</div>
+        </div>
+        <span class="mono" style="font-weight:700; color:var(--gold);">${fmtMoney(p.amount)}</span>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+/* ============================================================
+   AGENDA — tela semanal
+   ============================================================ */
+let agendaWeekOffset = 0; // 0 = semana atual, +1 próxima, -1 anterior
+
+function getWeekDates(offset){
+  // Retorna array de 7 datas ISO começando no domingo da semana (com offset)
+  const today = new Date();
+  const todayDow = today.getDay();
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() - todayDow + (offset*7));
+  const dates = [];
+  for(let i=0;i<7;i++){
+    const d = new Date(sunday);
+    d.setDate(sunday.getDate()+i);
+    dates.push(d.toISOString().slice(0,10));
+  }
+  return dates;
+}
+
+function shiftAgendaWeek(delta){
+  agendaWeekOffset += delta;
+  renderAgenda();
+}
+
+function renderAgenda(){
+  const dates = getWeekDates(agendaWeekOffset);
+  const today = todayISO();
+
+  // Label da semana
+  const first = dates[0], last = dates[6];
+  const labelText = agendaWeekOffset === 0 ? 'Esta semana' : (agendaWeekOffset > 0 ? `${fmtDateBR(first)} – ${fmtDateBR(last)}` : `${fmtDateBR(first)} – ${fmtDateBR(last)}`);
+  document.getElementById('agenda-week-label').textContent = labelText;
+
+  const container = document.getElementById('agenda-week');
+  container.innerHTML = dates.map(dateISO=>{
+    const entries = studentsForDate(dateISO);
+    const isToday = dateISO === today;
+    const weekday = new Date(dateISO + 'T12:00:00').getDay();
+
+    return `
+    <div class="card" style="${isToday?'border-color: var(--green);':''}">
+      <div class="row-between" style="margin-bottom:${entries.length?'10px':'0'};">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-family:'Archivo Black', sans-serif; font-size:13px; ${isToday?'color:var(--green);':''}">${WEEKDAY_SHORT[weekday]}</span>
+          <span class="mono text-dim" style="font-size:12px;">${fmtDateBR(dateISO)}</span>
+          ${isToday ? '<span class="badge badge-ok" style="font-size:9px;">Hoje</span>' : ''}
+        </div>
+        <button class="sheet-close" style="font-size:18px;" onclick="openAddFlexSession('${dateISO}')" title="Agendar aula avulsa">+</button>
+      </div>
+      ${entries.length === 0 ? `<div class="text-faint" style="font-size:12px;">Sem aulas agendadas</div>` : entries.map(({student:s, time})=>{
+        const session = DB.sessions.find(sess=>sess.studentId===s.id && sess.date===dateISO);
+        let badge = '';
+        if(session){
+          const st = STATUS_LABELS[session.status];
+          badge = `<span class="badge ${st.class}" style="font-size:9px;">${st.icon}</span>`;
+        }
+        const isFlex = s.schedule && s.schedule.type === 'flex';
+        return `
+        <div class="row-between" style="padding:6px 0; border-top:1px solid var(--line);" onclick="${isToday ? `openCheckin('${s.id}')` : `openStudentDetail('${s.id}')`}">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="mono" style="font-weight:700; font-size:12px; color:var(--blue); min-width:38px;">${escapeHtml(time)}</span>
+            <span style="font-size:13px;">${escapeHtml(s.name)}</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            ${badge}
+            ${isFlex ? `<button class="sheet-close" style="font-size:15px;" onclick="event.stopPropagation(); removeFlexSessionFromAgenda('${s.id}','${dateISO}')">×</button>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
+
+function removeFlexSessionFromAgenda(studentId, dateISO){
+  if(!confirm('Remover esta aula avulsa da agenda?')) return;
+  removeFlexDate(studentId, dateISO);
+  renderAgenda();
+}
+
+function openAddFlexSession(dateISO){
+  if(DB.students.length === 0){
+    showToast('Cadastre um aluno primeiro');
+    return;
+  }
+  openSheet(`
+    <div class="sheet-title">Agendar aula avulsa
+      <button class="sheet-close" onclick="closeSheet()">×</button>
+    </div>
+    <div class="text-dim" style="font-size:13px; margin-bottom:14px;">${fmtDateBR(dateISO)} · ${WEEKDAY_NAMES[new Date(dateISO+'T12:00:00').getDay()]}</div>
+
+    <label>Aluno</label>
+    <select id="flex-student">
+      ${DB.students.map(s=>`<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('')}
+    </select>
+
+    <label>Horário</label>
+    <input type="time" id="flex-time" value="07:00">
+
+    <div class="hint">Use para aulas avulsas/híbridas (consultoria) ou aulas extras fora da agenda fixa do aluno.</div>
+
+    <button class="btn btn-primary" onclick="saveFlexSession('${dateISO}')">Agendar</button>
+  `);
+}
+
+function saveFlexSession(dateISO){
+  const studentId = document.getElementById('flex-student').value;
+  const time = document.getElementById('flex-time').value || '07:00';
+  addFlexDate(studentId, dateISO, time);
+  closeSheet();
+  renderAgenda();
+  showToast('Aula agendada');
+}
+
+/* ============================================================
+   CAIXA
+   ============================================================ */
+function renderCash(){
+  const today = todayISO();
+  const mKey = monthKey(today);
+
+  const paymentsThisMonth = DB.payments.filter(p=>monthKey(p.date)===mKey);
+  const totalMonth = paymentsThisMonth.reduce((a,p)=>a+p.amount,0);
+  const totalAll = DB.payments.reduce((a,p)=>a+p.amount,0);
+
+  document.getElementById('cash-mes').textContent = fmtMoney(totalMonth);
+  document.getElementById('cash-total').textContent = fmtMoney(totalAll);
+
+  // Por aluno (este mês)
+  const byStudent = document.getElementById('cash-by-student');
+  const grouped = {};
+  paymentsThisMonth.forEach(p=>{
+    grouped[p.studentId] = (grouped[p.studentId]||0) + p.amount;
+  });
+  const studentIds = Object.keys(grouped);
+  if(studentIds.length===0){
+    byStudent.innerHTML = `<div class="empty" style="padding:24px;"><div class="sub">Nenhum pagamento este mês</div></div>`;
+  } else {
+    byStudent.innerHTML = studentIds.map(sid=>{
+      const student = DB.students.find(s=>s.id===sid);
+      if(!student) return '';
+      return `<div class="card" style="display:flex; align-items:center; justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="student-avatar" style="width:34px; height:34px; font-size:11px;">${initials(student.name)}</div>
+          <span style="font-weight:600; font-size:13px;">${escapeHtml(student.name)}</span>
+        </div>
+        <span class="mono" style="font-weight:700; color:var(--gold);">${fmtMoney(grouped[sid])}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // Histórico geral
+  const history = document.getElementById('cash-history');
+  const allPayments = DB.payments.slice().sort((a,b)=>b.date.localeCompare(a.date));
+  if(allPayments.length===0){
+    history.innerHTML = `<div class="empty" style="padding:24px;"><div class="sub">Nenhum pagamento registrado ainda</div></div>`;
+  } else {
+    history.innerHTML = `<div class="card">
+      ${allPayments.map(p=>{
+        const student = DB.students.find(s=>s.id===p.studentId);
+        return `<div class="history-item">
+          <div>
+            <div style="font-weight:600;">${student?escapeHtml(student.name):'—'}</div>
+            <div class="date">${fmtDateBR(p.date)} · ${escapeHtml(p.note||'')}</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="mono" style="font-weight:700; color:var(--gold);">${fmtMoney(p.amount)}</span>
+            <button class="sheet-close" style="font-size:16px;" onclick="removePayment('${p.id}')">×</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+}
+
+function removePayment(paymentId){
+  if(!confirm('Remover este pagamento?')) return;
+  DB.payments = DB.payments.filter(p=>p.id!==paymentId);
+  saveDB();
+  renderCash();
+}
+
+/* ============================================================
+   AUTOCADASTRO PÚBLICO (link genérico ?novocadastro=1)
+   ============================================================ */
+function copySelfRegisterLink(){
+  const baseUrl = window.location.href.split('#')[0].split('?')[0];
+  const link = `${baseUrl}?novocadastro=1`;
+
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(link).then(()=>{
+      showToast('Link copiado!');
+    }).catch(()=>{
+      showSelfRegisterLinkFallback(link);
+    });
+  } else {
+    showSelfRegisterLinkFallback(link);
+  }
+}
+
+function showSelfRegisterLinkFallback(link){
+  openSheet(`
+    <div class="sheet-title">Link de autocadastro
+      <button class="sheet-close" onclick="closeSheet()">×</button>
+    </div>
+    <div class="hint" style="margin-bottom:8px;">Envie este link para quem ainda não é seu aluno. A pessoa preenche os dados e o cadastro cai pendente pra você aprovar:</div>
+    <input type="text" value="${link}" readonly onclick="this.select()">
+    <div class="hint">⚠️ Nota: enquanto o Firebase não estiver configurado, o cadastro só ficará disponível neste mesmo navegador/aparelho.</div>
+  `);
+}
+
+/* Renderiza o formulário público de autocadastro em tela cheia */
+function renderSelfRegisterForm(){
+  const app = document.getElementById('app');
+  document.querySelector('nav.bottomnav').style.display = 'none';
+
+  const dayOptions = WEEKDAY_NAMES.map((n,i)=>`
+    <label style="display:flex; align-items:center; gap:8px; margin:0 0 8px; font-weight:500; color:var(--text); font-size:13px;">
+      <input type="checkbox" id="sr-day-${i}" style="width:18px; height:18px; margin:0;">
+      ${n}
+    </label>`).join('');
+
+  app.innerHTML = `
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">P</div>
+        <div class="brand-text">
+          <div class="name">PADOTY</div>
+          <div class="tag">Cadastro de aluno</div>
+        </div>
+      </div>
+    </header>
+    <main style="padding-bottom:60px;">
+      <div class="section-title" style="margin-top:14px;"><span class="accent"></span>Seus dados</div>
+
+      <label>Nome completo</label>
+      <input type="text" id="sr-name" placeholder="Seu nome completo">
+
+      <label>WhatsApp (com DDD)</label>
+      <input type="tel" id="sr-phone" placeholder="Ex: 19999998888">
+
+      <label>CPF</label>
+      <input type="text" id="sr-cpf" placeholder="000.000.000-00">
+
+      <label>Data de nascimento</label>
+      <input type="date" id="sr-birth">
+
+      <div class="section-title"><span class="accent"></span>Sobre o treino</div>
+
+      <label>Plano de interesse</label>
+      <select id="sr-plan">
+        <option value="">Não sei / a combinar</option>
+        ${DB.plans.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')}
+      </select>
+
+      <label>Dias de preferência para treinar</label>
+      ${dayOptions}
+
+      <label>Horário de preferência</label>
+      <input type="time" id="sr-time" value="07:00">
+
+      <label>Local de preferência</label>
+      <select id="sr-location">
+        <option value="Minha casa">Minha casa</option>
+        <option value="Meu condomínio">Meu condomínio</option>
+        <option value="Sky Fit">Sky Fit</option>
+        <option value="A combinar">A combinar</option>
+      </select>
+
+      <label>Objetivo principal</label>
+      <select id="sr-goal">
+        <option value="Perda de peso">Perda de peso</option>
+        <option value="Hipertrofia / ganho de massa">Hipertrofia / ganho de massa</option>
+        <option value="Condicionamento físico">Condicionamento físico</option>
+        <option value="Reabilitação / dor">Reabilitação / dor</option>
+        <option value="Saúde geral">Saúde geral</option>
+        <option value="Outro">Outro</option>
+      </select>
+
+      <label>Tem alguma lesão ou condição de saúde que eu deva saber? (opcional)</label>
+      <textarea id="sr-health" rows="2" placeholder="Ex: dor no joelho direito, hérnia de disco, etc."></textarea>
+
+      <button class="btn btn-primary" onclick="submitSelfRegister()">Enviar cadastro</button>
+
+      <div class="text-faint" style="text-align:center; font-size:11px; margin-top:24px;">PADOTY Saúde e Movimento</div>
+    </main>`;
+}
+
+function submitSelfRegister(){
+  const name = document.getElementById('sr-name').value.trim();
+  const phone = document.getElementById('sr-phone').value.trim();
+
+  if(!name || !phone){
+    showToast('Preencha pelo menos nome e WhatsApp');
+    return;
+  }
+
+  const preferredDays = [];
+  WEEKDAY_NAMES.forEach((n,i)=>{
+    if(document.getElementById(`sr-day-${i}`).checked){
+      preferredDays.push(i);
+    }
+  });
+
+  const registration = {
+    id: uid('reg'),
+    name,
+    phone,
+    cpf: document.getElementById('sr-cpf').value.trim(),
+    birth: document.getElementById('sr-birth').value,
+    planId: document.getElementById('sr-plan').value,
+    preferredDays,
+    preferredTime: document.getElementById('sr-time').value || '07:00',
+    location: document.getElementById('sr-location').value,
+    goal: document.getElementById('sr-goal').value,
+    health: document.getElementById('sr-health').value.trim(),
+    createdAt: todayISO()
+  };
+
+  DB.pendingRegistrations.push(registration);
+  saveDB();
+
+  // Tela de confirmação
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <main style="display:flex; align-items:center; justify-content:center; min-height:100vh; padding:24px; text-align:center;">
+      <div>
+        <div style="font-size:40px; margin-bottom:14px;">✅</div>
+        <div style="font-family:'Archivo Black', sans-serif; font-size:17px; margin-bottom:8px;">Cadastro enviado!</div>
+        <div class="text-dim" style="font-size:13px;">O Fábio vai revisar seus dados e confirmar seu plano em breve.</div>
+      </div>
+    </main>`;
+}
+
+/* ============================================================
+   REVISÃO DE CADASTROS PENDENTES
+   ============================================================ */
+function renderPendingRegistrations(){
+  const container = document.getElementById('pending-registrations');
+  if(!container) return;
+
+  if(!DB.pendingRegistrations || DB.pendingRegistrations.length === 0){
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="section-title"><span class="accent"></span>Novos cadastros (${DB.pendingRegistrations.length})</div>
+    ${DB.pendingRegistrations.map(r=>{
+      const plan = r.planId ? getPlan(r.planId) : null;
+      const days = r.preferredDays && r.preferredDays.length ? r.preferredDays.map(d=>WEEKDAY_SHORT[d]).join(', ') : '—';
+      return `
+      <div class="card">
+        <div class="row-between" style="margin-bottom:8px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="student-avatar" style="width:38px; height:38px; font-size:13px;">${initials(r.name)}</div>
+            <div>
+              <div style="font-weight:700; font-size:14px;">${escapeHtml(r.name)}</div>
+              <div class="text-faint" style="font-size:11px;">${escapeHtml(r.phone||'—')}</div>
+            </div>
+          </div>
+          <span class="badge badge-info">Pendente</span>
+        </div>
+        <div class="card-flat" style="margin-bottom:10px;">
+          <div class="row-between" style="margin-bottom:6px;"><span class="text-dim" style="font-size:12px;">Plano de interesse</span><span style="font-size:12px;">${plan?escapeHtml(plan.name):'A combinar'}</span></div>
+          <div class="row-between" style="margin-bottom:6px;"><span class="text-dim" style="font-size:12px;">Dias preferidos</span><span style="font-size:12px;">${days} · ${r.preferredTime||''}</span></div>
+          <div class="row-between" style="margin-bottom:6px;"><span class="text-dim" style="font-size:12px;">Local</span><span style="font-size:12px;">${escapeHtml(r.location||'—')}</span></div>
+          <div class="row-between" style="margin-bottom:6px;"><span class="text-dim" style="font-size:12px;">Objetivo</span><span style="font-size:12px;">${escapeHtml(r.goal||'—')}</span></div>
+          ${r.health ? `<div class="row-between"><span class="text-dim" style="font-size:12px;">Saúde</span><span style="font-size:12px; text-align:right; max-width:60%;">${escapeHtml(r.health)}</span></div>` : ''}
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-danger btn-sm" onclick="rejectPendingRegistration('${r.id}')">Descartar</button>
+          <button class="btn btn-primary btn-sm" onclick="approvePendingRegistration('${r.id}')">Aprovar e cadastrar</button>
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+function rejectPendingRegistration(regId){
+  if(!confirm('Descartar este cadastro pendente?')) return;
+  DB.pendingRegistrations = DB.pendingRegistrations.filter(r=>r.id!==regId);
+  saveDB();
+  renderPendingRegistrations();
+}
+
+function approvePendingRegistration(regId){
+  const reg = DB.pendingRegistrations.find(r=>r.id===regId);
+  if(!reg) return;
+
+  if(DB.plans.length === 0){
+    showToast('Cadastre um plano primeiro');
+    showScreen('plans');
+    return;
+  }
+
+  // Monta agenda a partir dos dias/horário preferidos (tipo fixo)
+  let schedule = { type:'fixed', flexDates: [], days: [] };
+  if(reg.preferredDays && reg.preferredDays.length){
+    schedule.days = reg.preferredDays.map(d=>({ day:d, time: reg.preferredTime || '07:00' }));
+  }
+
+  const planId = reg.planId || DB.plans[0].id;
+
+  const student = {
+    id: uid('stu'),
+    name: reg.name,
+    phone: reg.phone,
+    cpf: reg.cpf || '',
+    birth: reg.birth || '',
+    planId,
+    packageStart: todayISO(),
+    schedule,
+    status: 'ativo',
+    createdAt: todayISO(),
+    note: [reg.location?`Local: ${reg.location}`:'', reg.goal?`Objetivo: ${reg.goal}`:'', reg.health?`Saúde: ${reg.health}`:''].filter(Boolean).join(' · ')
+  };
+
+  DB.students.push(student);
+  DB.pendingRegistrations = DB.pendingRegistrations.filter(r=>r.id!==regId);
+  saveDB();
+
+  showToast('Aluno cadastrado!');
+  renderStudents();
+  openStudentForm(student.id);
+}
+
+/* ============================================================
+   LINK DE CADASTRO DO ALUNO
+   ============================================================ */
+function copyRegisterLink(studentId){
+  const baseUrl = window.location.href.split('#')[0].split('?')[0];
+  const link = `${baseUrl}?cadastro=${studentId}`;
+
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(link).then(()=>{
+      showToast('Link copiado!');
+    }).catch(()=>{
+      showLinkFallback(link);
+    });
+  } else {
+    showLinkFallback(link);
+  }
+
+  // Também oferece enviar via WhatsApp
+  const student = DB.students.find(s=>s.id===studentId);
+  if(student && student.phone){
+    setTimeout(()=>{
+      if(confirm('Enviar este link pelo WhatsApp do aluno?')){
+        const msg = `Oi ${student.name.split(' ')[0]}! Preenche seus dados aqui pra eu gerar seu contrato: ${link}`;
+        const phone = student.phone.replace(/\D/g,'');
+        window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+      }
+    }, 300);
+  }
+}
+
+function showLinkFallback(link){
+  openSheet(`
+    <div class="sheet-title">Link de cadastro
+      <button class="sheet-close" onclick="closeSheet()">×</button>
+    </div>
+    <div class="hint" style="margin-bottom:8px;">Copie o link abaixo e envie ao aluno:</div>
+    <input type="text" value="${link}" readonly onclick="this.select()">
+    <div class="hint">⚠️ Nota: este link funciona apenas neste navegador/aparelho, pois os dados estão salvos localmente. Para funcionar entre aparelhos diferentes, é necessário configurar sincronização online (Firebase).</div>
+  `);
+}
+
+/* Verifica se a URL contém parâmetro de cadastro ao carregar */
+function checkRegisterLinkParam(){
+  const params = new URLSearchParams(window.location.search);
+  const studentId = params.get('cadastro');
+  if(!studentId) return;
+  const student = DB.students.find(s=>s.id===studentId);
+  if(!student){
+    showToast('Aluno não encontrado neste aparelho');
+    return;
+  }
+  openStudentRegisterForm(studentId);
+}
+
+function openStudentRegisterForm(studentId){
+  const student = DB.students.find(s=>s.id===studentId);
+  openSheet(`
+    <div class="sheet-title">Complete seu cadastro
+      <button class="sheet-close" onclick="closeSheet()">×</button>
+    </div>
+    <div class="text-dim" style="font-size:13px; margin-bottom:14px;">Olá, ${escapeHtml(student.name)}! Preencha seus dados para o contrato.</div>
+
+    <label>Nome completo</label>
+    <input type="text" id="reg-name" value="${escapeHtml(student.name)}">
+
+    <label>CPF</label>
+    <input type="text" id="reg-cpf" placeholder="000.000.000-00" value="${escapeHtml(student.cpf||'')}">
+
+    <label>Data de nascimento</label>
+    <input type="date" id="reg-birth" value="${student.birth||''}">
+
+    <label>WhatsApp</label>
+    <input type="tel" id="reg-phone" placeholder="Ex: 19999998888" value="${escapeHtml(student.phone||'')}">
+
+    <button class="btn btn-primary" onclick="saveStudentRegisterForm('${studentId}')">Enviar dados</button>
+  `);
+}
+
+function saveStudentRegisterForm(studentId){
+  const student = DB.students.find(s=>s.id===studentId);
+  student.name = document.getElementById('reg-name').value.trim() || student.name;
+  student.cpf = document.getElementById('reg-cpf').value.trim();
+  student.birth = document.getElementById('reg-birth').value;
+  student.phone = document.getElementById('reg-phone').value.trim();
+  saveDB();
+  closeSheet();
+  showToast('Dados salvos! Obrigado.');
+  renderStudents();
+}
+
+/* ============================================================
+   CONTRATO EM PDF
+   ============================================================ */
+function generateContractPDF(studentId, forPortal){
+  const student = DB.students.find(s=>s.id===studentId);
+  const plan = getPlan(student.planId);
+
+  if(!student.cpf){
+    showToast('Preencha o CPF do aluno antes de gerar o contrato');
+    return null;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const pageWidth = 210;
+  const margin = 20;
+  const maxWidth = pageWidth - margin*2;
+  let y = 22;
+
+  function addLine(text, opts={}){
+    const size = opts.size || 10;
+    const style = opts.style || 'normal';
+    const align = opts.align || 'left';
+    const gap = opts.gap !== undefined ? opts.gap : 6;
+    doc.setFont('helvetica', style);
+    doc.setFontSize(size);
+    const lines = doc.splitTextToSize(text, maxWidth);
+    lines.forEach(line=>{
+      if(y > 280){ doc.addPage(); y = 22; }
+      const x = align==='center' ? pageWidth/2 : margin;
+      doc.text(line, x, y, { align });
+      y += gap;
+    });
+  }
+
+  const valorTotal = plan ? plan.totalAulas * plan.valorAula : 0;
+  const dataHoje = fmtDateBR(student.contractSignedAt ? student.contractSignedAt.slice(0,10) : todayISO());
+
+  // Cabeçalho
+  addLine('CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE PERSONAL TRAINER', { size:13, style:'bold', align:'center', gap:8 });
+  addLine('PADOTY Saúde e Movimento — CREF 142588-G/SP', { size:10, align:'center', gap:10 });
+
+  // Partes
+  addLine('CONTRATADO:', { style:'bold', gap:5 });
+  addLine('Fábio Pereira dos Santos, Profissional de Educação Física, CREF 142588-G/SP, CNPJ 63.359.208/0001-11, atuando sob a marca PADOTY Saúde e Movimento, com sede em Rio Claro/SP, doravante denominado CONTRATADO.', { gap:5 });
+  y += 2;
+
+  addLine('CONTRATANTE:', { style:'bold', gap:5 });
+  addLine(`${student.name}, portador(a) do CPF nº ${student.cpf}, doravante denominado(a) CONTRATANTE.`, { gap:5 });
+  y += 4;
+
+  // Cláusulas
+  addLine('CLÁUSULA 1ª - DO OBJETO', { style:'bold', gap:5 });
+  addLine('O presente contrato tem como objeto a prestação de serviços de personal training (treinamento físico personalizado), de forma presencial e/ou online, conforme plano contratado abaixo descrito.', { gap:5 });
+  y += 2;
+
+  addLine('CLÁUSULA 2ª - DO PLANO CONTRATADO', { style:'bold', gap:5 });
+  if(plan){
+    addLine(`Plano: ${plan.name}`, { gap:5 });
+    addLine(`Frequência: ${plan.perWeek > 0 ? plan.perWeek + 'x por semana' : 'conforme acordado'}`, { gap:5 });
+    addLine(`Total de aulas no pacote mensal: ${plan.totalAulas} aulas`, { gap:5 });
+    addLine(`Valor por aula: ${fmtMoney(plan.valorAula)}`, { gap:5 });
+    addLine(`Valor total do pacote mensal: ${fmtMoney(valorTotal)}`, { style:'bold', gap:5 });
+  }
+  y += 2;
+
+  addLine('CLÁUSULA 3ª - DA VIGÊNCIA E RENOVAÇÃO', { style:'bold', gap:5 });
+  addLine('O pacote tem duração mensal, renovando-se mediante novo pagamento ao término das aulas contratadas. As aulas não utilizadas não são acumuláveis para os meses seguintes.', { gap:5 });
+  y += 2;
+
+  addLine('CLÁUSULA 4ª - DE REPOSIÇÕES E CANCELAMENTOS', { style:'bold', gap:5 });
+  addLine('4.1. O CONTRATANTE terá direito a até 2 (duas) reposições de aula por mês, desde que o cancelamento seja comunicado com antecedência mínima de 24 (vinte e quatro) horas. As reposições não são cumulativas entre meses.', { gap:5 });
+  addLine('4.2. Cancelamentos com menos de 24 (vinte e quatro) horas de antecedência e faltas sem aviso prévio serão contabilizados como aula realizada, descontando do pacote normalmente.', { gap:5 });
+  y += 2;
+
+  addLine('CLÁUSULA 5ª - DO PAGAMENTO', { style:'bold', gap:5 });
+  addLine('O pagamento do pacote deverá ser realizado conforme acordo entre as partes, sendo condição para o início ou renovação do ciclo de aulas. O não pagamento implica na suspensão dos serviços.', { gap:5 });
+  y += 2;
+
+  addLine('CLÁUSULA 6ª - DA APTIDÃO FÍSICA E RESPONSABILIDADE', { style:'bold', gap:5 });
+  addLine('6.1. O CONTRATANTE declara expressamente que está em condições de saúde adequadas para a prática de atividade física supervisionada, tendo sido orientado a consultar um médico previamente caso tenha dúvidas sobre sua condição de saúde.', { gap:5 });
+  addLine('6.2. O CONTRATANTE declara ter informado ao CONTRATADO todas as condições de saúde relevantes, incluindo lesões, doenças preexistentes, uso de medicamentos e quaisquer restrições físicas.', { gap:5 });
+  addLine('6.3. O CONTRATADO fica isento de qualquer responsabilidade por danos, lesões ou agravamentos decorrentes de informações de saúde omitidas pelo CONTRATANTE, ou de condições preexistentes não declaradas.', { gap:5 });
+  addLine('6.4. O CONTRATANTE assume os riscos inerentes à prática de exercícios físicos, comprometendo-se a comunicar imediatamente qualquer desconforto durante as sessões.', { gap:5 });
+  y += 2;
+
+  addLine('CLÁUSULA 7ª - DAS DISPOSIÇÕES GERAIS', { style:'bold', gap:5 });
+  addLine('Este contrato poderá ser rescindido por qualquer das partes mediante aviso prévio, sem prejuízo das aulas já realizadas e/ou pagamentos efetuados. Fica eleito o foro da Comarca de Rio Claro/SP para dirimir quaisquer controvérsias.', { gap:5 });
+  y += 8;
+
+  // Aceite digital (se assinado via portal)
+  if(student.contractSignedAt){
+    addLine('ACEITE ELETRÔNICO', { style:'bold', gap:5 });
+    addLine(`Este contrato foi aceito eletronicamente pelo CONTRATANTE em ${fmtDateBR(student.contractSignedAt.slice(0,10))} às ${student.contractSignedAt.slice(11,16)}, por meio do portal digital PADOTY Saúde e Movimento.`, { gap:8 });
+    y += 4;
+  }
+
+  addLine(`Rio Claro/SP, ${dataHoje}`, { gap:14 });
+  y += 8;
+  addLine('_________________________________', { gap:5 });
+  addLine('CONTRATADO — Fábio Pereira dos Santos', { gap:5 });
+  addLine('PADOTY Saúde e Movimento · CNPJ 63.359.208/0001-11 · CREF 142588-G/SP', { gap:8 });
+  y += 6;
+  addLine('_________________________________', { gap:5 });
+  addLine(`CONTRATANTE — ${student.name}`, { gap:5 });
+  if(student.cpf) addLine(`CPF: ${student.cpf}`, { gap:5 });
+
+  if(forPortal) return doc;
+  const fileName = `Contrato_PADOTY_${student.name.replace(/\s+/g,'_')}.pdf`;
+  doc.save(fileName);
+  showToast('Contrato gerado');
+  return null;
+}
+
+/* ============================================================
+   PORTAL DO ALUNO (link de acompanhamento)
+   ============================================================ */
+function copyPortalLink(studentId){
+  const baseUrl = window.location.href.split('#')[0].split('?')[0];
+  const link = `${baseUrl}?portal=${studentId}`;
+  const student = DB.students.find(s=>s.id===studentId);
+
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(link).then(()=>{
+      showToast('Link do portal copiado!');
+    }).catch(()=>{
+      showPortalLinkFallback(link);
+    });
+  } else {
+    showPortalLinkFallback(link);
+  }
+
+  if(student && student.phone){
+    setTimeout(()=>{
+      if(confirm('Enviar este link pelo WhatsApp do aluno?')){
+        const msg = `Oi ${student.name.split(' ')[0]}! Aqui você acompanha suas aulas e seu pacote: ${link}`;
+        const phone = student.phone.replace(/\D/g,'');
+        window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+      }
+    }, 300);
+  }
+}
+
+function showPortalLinkFallback(link){
+  openSheet(`
+    <div class="sheet-title">Link de acompanhamento
+      <button class="sheet-close" onclick="closeSheet()">×</button>
+    </div>
+    <div class="hint" style="margin-bottom:8px;">Copie o link abaixo e envie ao aluno. Ele(a) poderá ver o plano, aulas restantes e histórico:</div>
+    <input type="text" value="${link}" readonly onclick="this.select()">
+    <div class="hint">⚠️ Nota: por enquanto este link só funciona neste navegador/aparelho (dados locais). Quando configurarmos sincronização online, funcionará de qualquer aparelho.</div>
+  `);
+}
+
+/* Renderiza o portal em tela cheia, substituindo todo o app */
+function renderStudentPortal(studentId){
+  const student = DB.students.find(s=>s.id===studentId);
+  const app = document.getElementById('app');
+
+  if(!student){
+    app.innerHTML = `
+      <div style="display:flex; align-items:center; justify-content:center; min-height:100vh; padding:24px; text-align:center;">
+        <div>
+          <div style="font-size:32px; margin-bottom:10px;">🔍</div>
+          <div style="font-weight:700; margin-bottom:6px;">Aluno não encontrado</div>
+          <div class="text-dim" style="font-size:13px;">Este link funciona apenas no aparelho do seu personal (dados locais).</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const plan = getPlan(student.planId);
+  const used = sessionsUsedInCurrentPackage(student);
+  const total = plan ? plan.totalAulas : 0;
+  const remaining = Math.max(total - used, 0);
+  const credits = repositionCreditsAvailable(student);
+  const sessions = sessionsInCurrentPackage(student).slice().reverse();
+  const pct = total > 0 ? Math.min((used/total)*100, 100) : 0;
+  const signed = student.contractSignedAt;
+
+  app.innerHTML = `
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">P</div>
+        <div class="brand-text">
+          <div class="name">PADOTY</div>
+          <div class="tag">Minhas Aulas</div>
+        </div>
+      </div>
+    </header>
+    <main style="padding-bottom:40px;">
+      <div style="display:flex; align-items:center; gap:14px; margin: 18px 0;">
+        <div class="student-avatar" style="width:52px; height:52px; font-size:17px;">${initials(student.name)}</div>
+        <div>
+          <div style="font-family:'Archivo Black', sans-serif; font-size:17px;">${escapeHtml(student.name)}</div>
+          <div class="text-dim" style="font-size:13px;">${plan ? escapeHtml(plan.name) : 'Sem plano'}</div>
+        </div>
+      </div>
+
+      <div class="card-flat" style="margin-bottom:14px;">
+        <div class="row-between" style="margin-bottom:10px;">
+          <span class="text-dim" style="font-size:12px;">Aulas do pacote atual</span>
+          <span class="mono" style="font-weight:700;">${used}/${total}</span>
+        </div>
+        <div style="height:8px; border-radius:6px; background: var(--bg-elev-2); overflow:hidden;">
+          <div style="height:100%; width:${pct}%; background: linear-gradient(90deg, var(--green), var(--blue));"></div>
+        </div>
+      </div>
+
+      <div class="stat-grid" style="margin-bottom:14px;">
+        <div class="stat-box">
+          <div class="value green">${remaining}</div>
+          <div class="label">Aulas restantes</div>
+        </div>
+        <div class="stat-box">
+          <div class="value ${credits>0?'green':''}" style="${credits<=0?'color:var(--danger);':''}">${credits}/${REPOSITION_LIMIT_PER_MONTH}</div>
+          <div class="label">Reposições no mês</div>
+        </div>
+      </div>
+
+      <div class="section-title"><span class="accent"></span>Sua agenda</div>
+      <div class="card-flat" style="margin-bottom:14px;">
+        <span style="font-size:13px;">${describeSchedule(student)}</span>
+      </div>
+
+      <div class="section-title"><span class="accent"></span>Regras do plano</div>
+      <div class="card" style="margin-bottom:14px; font-size:13px; line-height:1.7;">
+        <div style="margin-bottom:6px;">↻ <strong>Reposições:</strong> até 2 por mês, com aviso de <strong>24h ou mais</strong>. Não acumulam.</div>
+        <div style="margin-bottom:6px;">⚠ <strong>Cancelamento &lt;24h:</strong> aula descontada do pacote normalmente.</div>
+        <div style="margin-bottom:6px;">✕ <strong>Falta sem aviso:</strong> aula descontada do pacote normalmente.</div>
+        <div>📋 <strong>Renovação:</strong> pacote mensal, sem acúmulo de aulas não utilizadas.</div>
+      </div>
+
+      <div class="section-title"><span class="accent"></span>Histórico do pacote atual</div>
+      ${sessions.length===0 ? `<div class="empty" style="padding:24px;"><div class="sub">Nenhuma aula registrada ainda</div></div>` : `
+      <div class="card">
+        ${sessions.map(s=>{
+          const st = STATUS_LABELS[s.status];
+          return `<div class="history-item">
+            <div class="date">${fmtDateBR(s.date)} · ${weekdayShort(s.date)}</div>
+            <span class="badge ${st.class}">${st.icon} ${st.label}</span>
+          </div>`;
+        }).join('')}
+      </div>`}
+
+      ${remaining<=0 ? `<div class="card" style="margin-top:14px; border-color: var(--gold);">
+        <div style="font-size:13px;">📋 Seu pacote está concluído. Fale com o Fábio para renovar!</div>
+      </div>` : ''}
+
+      <div class="section-title"><span class="accent"></span>Contrato</div>
+      ${signed ? `
+      <div class="card" style="border-color: var(--ok);">
+        <div class="row-between">
+          <span style="font-size:13px;">✅ Contrato aceito</span>
+          <span class="mono text-faint" style="font-size:11px;">${fmtDateBR(signed.slice(0,10))} ${signed.slice(11,16)}</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="generateContractPDF('${studentId}')">📄 Baixar PDF</button>
+      </div>` : `
+      <div class="card" style="border-color: var(--warn);">
+        <div style="font-size:13px; margin-bottom:12px;">⚠️ Você ainda não assinou o contrato. Leia e aceite abaixo.</div>
+        <div style="background:var(--bg-elev-2); border-radius:8px; padding:12px; font-size:12px; line-height:1.7; max-height:180px; overflow-y:auto; margin-bottom:12px; color:var(--text-dim);">
+          <strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS — PADOTY Saúde e Movimento</strong><br><br>
+          Contratado: Fábio Pereira dos Santos, CREF 142588-G/SP, CNPJ 63.359.208/0001-11, Rio Claro/SP.<br><br>
+          <strong>Plano:</strong> ${plan ? escapeHtml(plan.name) + ' — ' + plan.totalAulas + ' aulas mensais · ' + fmtMoney(plan.valorAula) + '/aula · Total: ' + fmtMoney(plan.totalAulas * plan.valorAula) : 'conforme acordado'}.<br><br>
+          <strong>Reposições:</strong> até 2 por mês com aviso ≥24h. Cancelamentos &lt;24h e faltas sem aviso descontam do pacote normalmente. Reposições não acumulam entre meses.<br><br>
+          <strong>Pagamento:</strong> por pacote mensal, condição para início ou renovação das aulas.<br><br>
+          <strong>Aptidão física:</strong> Declaro estar apto(a) para a prática de atividade física e ter informado ao profissional todas as condições de saúde relevantes (lesões, doenças, medicamentos). Estou ciente dos riscos inerentes à prática de exercícios e isento o contratado de responsabilidade por informações omitidas ou condições não declaradas.<br><br>
+          <strong>Rescisão:</strong> por qualquer das partes mediante aviso prévio. Foro: Comarca de Rio Claro/SP.
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;">
+          <label style="display:flex; align-items:flex-start; gap:10px; font-size:13px; margin:0; color:var(--text);">
+            <input type="checkbox" id="portal-check-apto" style="width:18px; height:18px; flex-shrink:0; margin-top:1px;">
+            Declaro estar apto(a) para praticar atividade física e ter informado todas as condições de saúde relevantes.
+          </label>
+          <label style="display:flex; align-items:flex-start; gap:10px; font-size:13px; margin:0; color:var(--text);">
+            <input type="checkbox" id="portal-check-contract" style="width:18px; height:18px; flex-shrink:0; margin-top:1px;">
+            Li e concordo com todos os termos do contrato acima.
+          </label>
+        </div>
+        <button class="btn btn-primary" onclick="signPortalContract('${studentId}')">Assinar contrato</button>
+      </div>`}
+
+      <div class="text-faint" style="text-align:center; font-size:11px; margin-top:24px;">PADOTY Saúde e Movimento · CREF 142588-G/SP</div>
+    </main>`;
+}
+
+function signPortalContract(studentId){
+  const checkApto = document.getElementById('portal-check-apto');
+  const checkContract = document.getElementById('portal-check-contract');
+  if(!checkApto.checked || !checkContract.checked){
+    showToast('Marque as duas opções para assinar');
+    return;
+  }
+  const student = DB.students.find(s=>s.id===studentId);
+  const now = new Date();
+  // ISO com hora local
+  student.contractSignedAt = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+'T'+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  saveDB();
+  showToast('Contrato assinado! Obrigado.');
+  renderStudentPortal(studentId);
+}
+
+
+/* ============================================================
+   INIT
+   ============================================================ */
+/* ============================================================
+   AUTENTICAÇÃO — LOGIN / LOGOUT
+   ============================================================ */
+let __currentUser = null; // usuário autenticado (Firebase User ou null)
+let __isTrainer = false;  // true = personal; false = aluno
+
+function showLoginScreen(){
+  document.getElementById('login-screen').style.display = 'block';
+  document.getElementById('app').style.display = 'none';
+}
+
+function hideLoginScreen(){
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('app').style.flexDirection = 'column';
+}
+
+async function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('login-btn');
+
+  if(!email || !password){
+    errEl.textContent = 'Preencha e-mail e senha.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  btn.textContent = 'Entrando...';
+  btn.disabled = true;
+  errEl.style.display = 'none';
+
+  if(!window.__firebaseReady || !window.__firebase){
+    errEl.textContent = 'Configure o Firebase antes de fazer login.';
+    errEl.style.display = 'block';
+    btn.textContent = 'Entrar';
+    btn.disabled = false;
+    return;
+  }
+
+  try{
+    const cred = await window.__firebase.signInWithEmailAndPassword(window.__firebase.auth, email, password);
+    __currentUser = cred.user;
+    __isTrainer = cred.user.email.toLowerCase() === (window.__TRAINER_EMAIL||'').toLowerCase();
+    await loadDB();
+    hideLoginScreen();
+    bootApp();
+  } catch(err){
+    const msgs = {
+      'auth/wrong-password': 'Senha incorreta.',
+      'auth/user-not-found': 'E-mail não cadastrado.',
+      'auth/invalid-email': 'E-mail inválido.',
+      'auth/too-many-requests': 'Muitas tentativas. Aguarde um momento.',
+    };
+    errEl.textContent = msgs[err.code] || 'Erro ao entrar: ' + err.message;
+    errEl.style.display = 'block';
+  }
+  btn.textContent = 'Entrar';
+  btn.disabled = false;
+}
+
+async function doResetPassword(){
+  const email = document.getElementById('login-email').value.trim();
+  if(!email){ showToast('Digite seu e-mail primeiro'); return; }
+  if(!window.__firebaseReady || !window.__firebase){
+    showToast('Firebase não configurado');
+    return;
+  }
+  const { sendPasswordResetEmail } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+  try{
+    await sendPasswordResetEmail(window.__firebase.auth, email);
+    showToast('E-mail de redefinição enviado!');
+  } catch(e){
+    showToast('Erro: ' + e.message);
+  }
+}
+
+function doLogout(){
+  if(!confirm('Sair do aplicativo?')) return;
+  __currentUser = null;
+  __isTrainer = false;
+  if(window.__firebaseReady && window.__firebase){
+    window.__firebase.signOut(window.__firebase.auth).catch(()=>{});
+  }
+  showLoginScreen();
+}
+
+// Adiciona botão de logout no header (só após login)
+function addLogoutButton(){
+  const topbar = document.querySelector('.topbar');
+  if(!topbar || topbar.querySelector('.logout-btn')) return;
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-ghost btn-sm logout-btn';
+  btn.style.cssText = 'width:auto; font-size:11px; padding:6px 10px;';
+  btn.textContent = 'Sair';
+  btn.onclick = doLogout;
+  topbar.appendChild(btn);
+}
+
+/* ============================================================
+   BOOT — inicializa o app após autenticação
+   ============================================================ */
+function bootApp(){
+  addLogoutButton();
+
+  const params = new URLSearchParams(window.location.search);
+
+  // Autocadastro público (não precisa de login)
+  if(params.get('novocadastro')){
+    renderSelfRegisterForm();
+    return;
+  }
+
+  // PERSONAL — acesso completo
+  document.querySelector('nav.bottomnav').style.display = 'flex';
+  renderHeaderDate();
+  renderHome();
+  checkRegisterLinkParam();
+}
+
+window.addEventListener('DOMContentLoaded', async ()=>{
+  document.getElementById('app').style.opacity = '0.4';
+
+  // Autocadastro público não precisa de login
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('novocadastro')){
+    await loadDB();
+    document.getElementById('app').style.opacity = '1';
+    renderSelfRegisterForm();
+    return;
+  }
+
+  // Com Firebase: espera onAuthStateChanged decidir
+  if(window.__firebaseReady !== undefined){
+    initAuth();
+  } else {
+    window.addEventListener('firebase-checked', initAuth, { once:true });
+  }
+});
+
+function initAuth(){
+  document.getElementById('app').style.opacity = '1';
+
+  if(window.__firebaseReady && window.__firebase){
+    window.__firebase.onAuthStateChanged(window.__firebase.auth, async (user)=>{
+      if(user){
+        __currentUser = user;
+        __isTrainer = user.email.toLowerCase() === (window.__TRAINER_EMAIL||'').toLowerCase();
+        await loadDB();
+        hideLoginScreen();
+        bootApp();
+      } else {
+        showLoginScreen();
+      }
+    });
+  } else {
+    showLoginScreen();
+  }
+}
+</script>
+
+</body>
+</html>
