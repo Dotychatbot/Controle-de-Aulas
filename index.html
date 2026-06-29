@@ -262,6 +262,18 @@
   }
   .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
 </style>
+<!-- Esconde login imediatamente para rotas públicas (evita flash) -->
+<script>
+  (function(){
+    const p = new URLSearchParams(window.location.search);
+    if(p.get('aluno')!==null || p.get('portal') || p.get('novocadastro')){
+      document.addEventListener('DOMContentLoaded', function(){
+        var ls = document.getElementById('login-screen');
+        if(ls) ls.style.display = 'none';
+      });
+    }
+  })();
+</script>
 </head>
 <body>
 <!-- ===================== LOGIN SCREEN ===================== -->
@@ -2672,13 +2684,18 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   document.getElementById('app').style.opacity = '0.4';
 
   const params = new URLSearchParams(window.location.search);
+  const isPublicRoute = params.get('aluno') !== null || params.get('portal') || params.get('novocadastro');
 
-  // Portal via CPF — link genérico ?aluno, aluno digita o CPF
+  // Esconde login imediatamente para rotas públicas (antes do loadDB)
+  if(isPublicRoute){
+    document.getElementById('login-screen').style.display = 'none';
+    document.querySelector('nav.bottomnav').style.display = 'none';
+  }
+
+  // Portal via CPF — link genérico ?aluno
   if(params.get('aluno') !== null){
     await loadDB();
     document.getElementById('app').style.opacity = '1';
-    document.getElementById('login-screen').style.display = 'none';
-    document.querySelector('nav.bottomnav').style.display = 'none';
     renderCPFLogin();
     return;
   }
@@ -2687,19 +2704,16 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   if(params.get('portal')){
     await loadDB();
     document.getElementById('app').style.opacity = '1';
-    document.getElementById('login-screen').style.display = 'none';
-    document.querySelector('nav.bottomnav').style.display = 'none';
     const portalId = params.get('portal');
     renderStudentPortal(portalId);
     window._portalRenderFn = ()=> renderStudentPortal(portalId);
     return;
   }
 
-  // Autocadastro público — abre direto, sem login
+  // Autocadastro público
   if(params.get('novocadastro')){
     await loadDB();
     document.getElementById('app').style.opacity = '1';
-    document.getElementById('login-screen').style.display = 'none';
     renderSelfRegisterForm();
     return;
   }
