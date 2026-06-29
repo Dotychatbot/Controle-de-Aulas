@@ -605,9 +605,9 @@ function uid(prefix){
 /* ---------- Seed inicial (planos comuns) ---------- */
 function seedData(){
   DB.plans = [
-    { id: uid('plan'), name: 'Mensal 1x/semana', perWeek: 1, totalAulas: 4, valorAula: 80 },
-    { id: uid('plan'), name: 'Mensal 2x/semana', perWeek: 2, totalAulas: 8, valorAula: 75 },
-    { id: uid('plan'), name: 'Mensal 3x/semana', perWeek: 3, totalAulas: 12, valorAula: 70 },
+    { id: uid('plan'), name: 'Mensal 1x/semana', perWeek: 1, totalAulas: 4, valorAula: 80, duracao: 1 },
+    { id: uid('plan'), name: 'Mensal 2x/semana', perWeek: 2, totalAulas: 8, valorAula: 75, duracao: 1 },
+    { id: uid('plan'), name: 'Mensal 3x/semana', perWeek: 3, totalAulas: 12, valorAula: 70, duracao: 1 },
   ];
 }
 
@@ -709,7 +709,7 @@ function renderPlans(){
       <div class="row-between">
         <div>
           <div style="font-weight:700; font-size:15px; margin-bottom:4px;">${escapeHtml(p.name)}</div>
-          <div class="text-dim" style="font-size:12px;">${p.perWeek}x por semana · ${p.totalAulas} aulas/mês</div>
+          <div class="text-dim" style="font-size:12px;">${p.perWeek}x por semana · ${p.totalAulas} aulas · ${p.duracao===3?'Trimestral':p.duracao===6?'Semestral':'Mensal'}</div>
         </div>
         <div style="text-align:right;">
           <div class="mono" style="font-weight:700; color:var(--gold); font-size:15px;">${fmtMoney(total)}</div>
@@ -738,6 +738,13 @@ function openPlanForm(planId){
     <label>Nome do plano</label>
     <input type="text" id="plan-name" placeholder="Ex: Mensal 2x/semana" value="${plan ? escapeHtml(plan.name) : ''}">
 
+    <label>Duração do contrato</label>
+    <select id="plan-duracao" onchange="updatePlanTotalFromWeek()">
+      <option value="1" ${!plan||plan.duracao===1?'selected':''}>Mensal (1 mês)</option>
+      <option value="3" ${plan&&plan.duracao===3?'selected':''}>Trimestral (3 meses)</option>
+      <option value="6" ${plan&&plan.duracao===6?'selected':''}>Semestral (6 meses)</option>
+    </select>
+
     <label>Aulas por semana</label>
     <select id="plan-perweek" onchange="updatePlanTotalFromWeek()">
       <option value="1" ${plan&&plan.perWeek===1?'selected':''}>1x por semana</option>
@@ -748,32 +755,36 @@ function openPlanForm(planId){
       <option value="0" ${plan&&plan.perWeek===0?'selected':''}>Personalizado (não calcula)</option>
     </select>
 
-    <label>Total de aulas no pacote (mensal)</label>
+    <label>Total de aulas no pacote</label>
     <input type="number" id="plan-total" min="1" placeholder="Ex: 8" value="${plan ? plan.totalAulas : ''}">
-    <div class="hint">Sugestão automática: 1x = 4, 2x = 8, 3x = 12, 4x = 16. Pode ajustar manualmente.</div>
+    <div class="hint">Calculado automaticamente: aulas/semana × 4 semanas × meses. Pode ajustar manualmente.</div>
 
     <label>Valor por aula (R$)</label>
     <input type="number" id="plan-valor" min="0" step="0.01" placeholder="Ex: 75.00" value="${plan ? plan.valorAula : ''}" oninput="updatePlanPreview()">
 
     <div class="card-flat" style="margin-bottom:14px;">
-      <div class="row-between">
-        <span class="text-dim" style="font-size:12px;">Valor total do pacote</span>
+      <div class="row-between" style="margin-bottom:6px;">
+        <span class="text-dim" style="font-size:12px;">Valor total do contrato</span>
         <span class="mono" style="font-weight:700; color:var(--gold);" id="plan-preview-total">R$ 0,00</span>
+      </div>
+      <div class="row-between">
+        <span class="text-dim" style="font-size:12px;">Valor por mês</span>
+        <span class="mono" style="font-size:12px;" id="plan-preview-mes">R$ 0,00</span>
       </div>
     </div>
 
     <button class="btn btn-primary" onclick="savePlan('${plan ? plan.id : ''}')">Salvar plano</button>
   `);
-  // attach listeners for total field too
   document.getElementById('plan-total').addEventListener('input', updatePlanPreview);
   updatePlanPreview();
 }
 
 function updatePlanTotalFromWeek(){
   const perWeek = parseInt(document.getElementById('plan-perweek').value);
+  const duracao = parseInt(document.getElementById('plan-duracao').value) || 1;
   const totalField = document.getElementById('plan-total');
   if(perWeek > 0){
-    totalField.value = perWeek * 4;
+    totalField.value = perWeek * 4 * duracao;
   }
   updatePlanPreview();
 }
@@ -781,7 +792,11 @@ function updatePlanTotalFromWeek(){
 function updatePlanPreview(){
   const total = parseFloat(document.getElementById('plan-total').value) || 0;
   const valor = parseFloat(document.getElementById('plan-valor').value) || 0;
-  document.getElementById('plan-preview-total').textContent = fmtMoney(total * valor);
+  const duracao = parseInt(document.getElementById('plan-duracao').value) || 1;
+  const totalValor = total * valor;
+  const porMes = duracao > 1 ? totalValor / duracao : totalValor;
+  document.getElementById('plan-preview-total').textContent = fmtMoney(totalValor);
+  document.getElementById('plan-preview-mes').textContent = duracao > 1 ? fmtMoney(porMes) + '/mês' : '—';
 }
 
 function savePlan(planId){
@@ -789,6 +804,7 @@ function savePlan(planId){
   const perWeek = parseInt(document.getElementById('plan-perweek').value);
   const totalAulas = parseInt(document.getElementById('plan-total').value);
   const valorAula = parseFloat(document.getElementById('plan-valor').value);
+  const duracao = parseInt(document.getElementById('plan-duracao').value) || 1;
 
   if(!name || !totalAulas || !valorAula){
     showToast('Preencha todos os campos');
@@ -797,9 +813,9 @@ function savePlan(planId){
 
   if(planId){
     const plan = DB.plans.find(p=>p.id===planId);
-    Object.assign(plan, { name, perWeek, totalAulas, valorAula });
+    Object.assign(plan, { name, perWeek, totalAulas, valorAula, duracao });
   } else {
-    DB.plans.push({ id: uid('plan'), name, perWeek, totalAulas, valorAula });
+    DB.plans.push({ id: uid('plan'), name, perWeek, totalAulas, valorAula, duracao });
   }
   saveDB();
   closeSheet();
@@ -2196,16 +2212,25 @@ function generateContractPDF(studentId, forPortal){
 
   addLine('CLÁUSULA 2ª - DO PLANO CONTRATADO', { style:'bold', gap:5 });
   if(plan){
+    const duracao = plan.duracao || 1;
+    const duracaoLabel = duracao===3 ? 'Trimestral (3 meses)' : duracao===6 ? 'Semestral (6 meses)' : 'Mensal (1 mês)';
+    const valorMensal = plan.totalAulas / duracao * plan.valorAula;
     addLine(`Plano: ${plan.name}`, { gap:5 });
+    addLine(`Duração: ${duracaoLabel}`, { gap:5 });
     addLine(`Frequência: ${plan.perWeek > 0 ? plan.perWeek + 'x por semana' : 'conforme acordado'}`, { gap:5 });
-    addLine(`Total de aulas no pacote mensal: ${plan.totalAulas} aulas`, { gap:5 });
+    addLine(`Total de aulas no período: ${plan.totalAulas} aulas`, { gap:5 });
     addLine(`Valor por aula: ${fmtMoney(plan.valorAula)}`, { gap:5 });
-    addLine(`Valor total do pacote mensal: ${fmtMoney(valorTotal)}`, { style:'bold', gap:5 });
+    if(duracao > 1){
+      addLine(`Valor mensal: ${fmtMoney(valorMensal)}`, { gap:5 });
+    }
+    addLine(`Valor total do contrato: ${fmtMoney(valorTotal)}`, { style:'bold', gap:5 });
   }
   y += 2;
 
   addLine('CLÁUSULA 3ª - DA VIGÊNCIA E RENOVAÇÃO', { style:'bold', gap:5 });
-  addLine('O pacote tem duração mensal, renovando-se mediante novo pagamento ao término das aulas contratadas. As aulas não utilizadas não são acumuláveis para os meses seguintes.', { gap:5 });
+  const duracao = plan ? (plan.duracao || 1) : 1;
+  const duracaoTexto = duracao===3 ? 'trimestral (3 meses)' : duracao===6 ? 'semestral (6 meses)' : 'mensal (1 mês)';
+  addLine(`O contrato tem duração ${duracaoTexto}, renovando-se mediante novo pagamento ao término do período contratado. As aulas não utilizadas não são acumuláveis para o período seguinte.`, { gap:5 });
   y += 2;
 
   addLine('CLÁUSULA 4ª - DE REPOSIÇÕES E CANCELAMENTOS', { style:'bold', gap:5 });
@@ -2401,7 +2426,7 @@ function renderStudentPortal(studentId){
         <div style="background:var(--bg-elev-2); border-radius:8px; padding:12px; font-size:12px; line-height:1.7; max-height:180px; overflow-y:auto; margin-bottom:12px; color:var(--text-dim);">
           <strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS — PADOTY Saúde e Movimento</strong><br><br>
           Contratado: Fábio Pereira dos Santos, CREF 142588-G/SP, CNPJ 63.359.208/0001-11, Rio Claro/SP.<br><br>
-          <strong>Plano:</strong> ${plan ? escapeHtml(plan.name) + ' — ' + plan.totalAulas + ' aulas mensais · ' + fmtMoney(plan.valorAula) + '/aula · Total: ' + fmtMoney(plan.totalAulas * plan.valorAula) : 'conforme acordado'}.<br><br>
+          <strong>Plano:</strong> ${plan ? (() => { const dur = plan.duracao||1; const label = dur===3?'Trimestral':dur===6?'Semestral':'Mensal'; return `${escapeHtml(plan.name)} — ${label} · ${plan.totalAulas} aulas · ${fmtMoney(plan.valorAula)}/aula · Total: ${fmtMoney(plan.totalAulas * plan.valorAula)}`; })() : 'conforme acordado'}.<br><br>
           <strong>Reposições:</strong> até 2 por mês com aviso ≥24h. Cancelamentos &lt;24h e faltas sem aviso descontam do pacote normalmente. Reposições não acumulam entre meses.<br><br>
           <strong>Pagamento:</strong> por pacote mensal, condição para início ou renovação das aulas.<br><br>
           <strong>Aptidão física:</strong> Declaro estar apto(a) para a prática de atividade física e ter informado ao profissional todas as condições de saúde relevantes (lesões, doenças, medicamentos). Estou ciente dos riscos inerentes à prática de exercícios e isento o contratado de responsabilidade por informações omitidas ou condições não declaradas.<br><br>
@@ -2568,16 +2593,30 @@ function bootApp(){
 window.addEventListener('DOMContentLoaded', async ()=>{
   document.getElementById('app').style.opacity = '0.4';
 
-  // Autocadastro público não precisa de login
   const params = new URLSearchParams(window.location.search);
+
+  // Portal do aluno — abre direto, sem login
+  if(params.get('portal')){
+    await loadDB();
+    document.getElementById('app').style.opacity = '1';
+    document.getElementById('login-screen').style.display = 'none';
+    document.querySelector('nav.bottomnav').style.display = 'none';
+    const portalId = params.get('portal');
+    renderStudentPortal(portalId);
+    window._portalRenderFn = ()=> renderStudentPortal(portalId);
+    return;
+  }
+
+  // Autocadastro público — abre direto, sem login
   if(params.get('novocadastro')){
     await loadDB();
     document.getElementById('app').style.opacity = '1';
+    document.getElementById('login-screen').style.display = 'none';
     renderSelfRegisterForm();
     return;
   }
 
-  // Com Firebase: espera onAuthStateChanged decidir
+  // App principal — exige login
   if(window.__firebaseReady !== undefined){
     initAuth();
   } else {
