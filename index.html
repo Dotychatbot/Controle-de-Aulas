@@ -1447,10 +1447,11 @@ function renderAlerts(){
 /* ============================================================
    CHECK-IN (sheet)
    ============================================================ */
-function openCheckin(studentId){
+function openCheckin(studentId, preDate){
   const student = DB.students.find(s=>s.id===studentId);
   const today = todayISO();
-  const existing = DB.sessions.find(sess=>sess.studentId===studentId && sess.date===today);
+  const targetDate = preDate || today;
+  const existing = DB.sessions.find(sess=>sess.studentId===studentId && sess.date===targetDate);
   const credits = repositionCreditsAvailable(student);
 
   openSheet(`
@@ -1458,7 +1459,10 @@ function openCheckin(studentId){
       Check-in · ${escapeHtml(student.name)}
       <button class="sheet-close" onclick="closeSheet()">×</button>
     </div>
-    <div class="text-dim" style="font-size:13px; margin-bottom:14px;">Hoje · ${fmtDateBR(today)}</div>
+
+    <label>Data da aula</label>
+    <input type="date" id="checkin-date" value="${targetDate}" max="${today}" onchange="updateCheckinExisting('${studentId}')">
+    <div class="hint" style="margin-top:-10px;">Para lançar aula retroativa, escolha a data passada.</div>
 
     <div class="card-flat" style="margin-bottom:16px;">
       <div class="row-between">
@@ -1467,7 +1471,7 @@ function openCheckin(studentId){
       </div>
     </div>
 
-    <label>Como foi a aula de hoje?</label>
+    <label>Status da aula</label>
     <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;">
       <button class="btn btn-secondary" style="justify-content:flex-start;" onclick="confirmCheckin('${studentId}','realizada')">
         ✓ Aula realizada <span class="text-faint" style="margin-left:auto; font-size:11px;">desconta do pacote</span>
@@ -1486,20 +1490,53 @@ function openCheckin(studentId){
     <label>Observação (opcional)</label>
     <textarea id="checkin-note" rows="2" placeholder="Ex: treino de pernas, sentiu dor no joelho...">${existing ? escapeHtml(existing.note||'') : ''}</textarea>
 
-    ${existing ? `<button class="btn btn-danger" onclick="removeSession('${existing.id}'); closeSheet();">Remover check-in de hoje</button>` : ''}
+    <div id="checkin-existing-action">
+      ${existing ? `<button class="btn btn-danger" onclick="removeSessionByDate('${studentId}'); closeSheet();">Remover check-in desta data</button>` : ''}
+    </div>
   `);
+}
+
+function updateCheckinExisting(studentId){
+  const date = document.getElementById('checkin-date').value;
+  const existing = DB.sessions.find(sess=>sess.studentId===studentId && sess.date===date);
+  const noteEl = document.getElementById('checkin-note');
+  const actionEl = document.getElementById('checkin-existing-action');
+  if(existing){
+    noteEl.value = existing.note || '';
+    actionEl.innerHTML = `<button class="btn btn-danger" onclick="removeSessionByDate('${studentId}'); closeSheet();">Remover check-in desta data</button>`;
+  } else {
+    noteEl.value = '';
+    actionEl.innerHTML = '';
+  }
+}
+
+function removeSessionByDate(studentId){
+  const date = document.getElementById('checkin-date').value;
+  const existing = DB.sessions.find(sess=>sess.studentId===studentId && sess.date===date);
+  if(existing) removeSession(existing.id);
 }
 
 function confirmCheckin(studentId, status){
   const note = document.getElementById('checkin-note').value.trim();
-  const today = todayISO();
-  // Remove existing session for today (overwrite)
-  const existing = DB.sessions.find(sess=>sess.studentId===studentId && sess.date===today);
+  const date = document.getElementById('checkin-date').value || todayISO();
+  // Remove existing session for this date (overwrite)
+  const existing = DB.sessions.find(sess=>sess.studentId===studentId && sess.date===date);
   if(existing){
     DB.sessions = DB.sessions.filter(s=>s.id!==existing.id);
   }
-  const ok = addSession(studentId, status, note);
-  if(ok === false) return;
+  // addSession usa todayISO internamente — vou passar a data manualmente
+  const student = DB.students.find(s=>s.id===studentId);
+  if(status === 'cancelada_24h' && repositionCreditsAvailable(student) <= 0){
+    if(!confirm('Este aluno já usou as 2 reposições do mês.\nRegistrar mesmo assim?')) return;
+  }
+  DB.sessions.push({
+    id: uid('sess'),
+    studentId,
+    date,
+    status,
+    note: note || ''
+  });
+  saveDB();
   closeSheet();
   renderHome();
   const detail = document.getElementById('screen-student-detail');
@@ -1521,14 +1558,21 @@ function sendConfirmMessage(studentId, targetDate){
   }
   const date = targetDate || todayISO();
   const firstName = student.name.split(' ')[0];
-  const isToday = date === todayISO();
-  const dayLabel = isToday ? `hoje, ${fmtDateBR(date)}` : `amanhã, ${fmtDateBR(date)}`;
-  const msg = `Oi ${firstName}! Tudo bem? Confirmando: tem aula ${dayLabel}? Me avisa por aqui 💪`;
+
+  // Dia da semana + data formatada
+  const weekdays = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  const weekday = weekdays[new Date(date + 'T12:00:00').getDay()];
+
+  // Horário da aula (busca na agenda do aluno)
+  const time = scheduleTimeForDate(student, date);
+  const horario = time ? ` às ${time}` : '';
+
+  const msg = `Oi ${firstName}! 👋 Passando pra confirmar nossa aula de ${weekday}, ${fmtDateBR(date)}${horario}. Você confirma? Responde SIM ou NÃO 😊\n\nQualquer cancelamento, avisa com 24h de antecedência.`;
+
   const phone = student.phone.replace(/\D/g,'');
   const url = `https://wa.me/55${phone}?text=${encodeURIComponent(msg)}`;
   window.open(url, '_blank');
 
-  // Marca como confirmação enviada (para a lista "Confirmar amanhã" sumir esse aluno)
   markConfirmationSent(studentId, date);
 }
 
